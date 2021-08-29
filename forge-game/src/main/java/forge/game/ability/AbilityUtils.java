@@ -452,7 +452,7 @@ public class AbilityUtils {
         return calculateAmount(card, amount, ability, false);
     }
 
-    public static int calculateAmount(final Card card, String amount, final CardTraitBase ability, boolean maxto) {
+    public static int calculateAmount(Card card, String amount, final CardTraitBase ability, boolean maxto) {
         // return empty strings and constants
         if (StringUtils.isBlank(amount)) { return 0; }
         if (card == null) { return 0; }
@@ -521,6 +521,9 @@ public class AbilityUtils {
 
         Integer val = null;
         if (calcX[0].startsWith("Count")) {
+            if (calcX[0].endsWith("LKI")) {
+                card = game.getChangeZoneLKIInfo(card);
+            }
             val = xCount(card, calcX[1], ability);
         } else if (calcX[0].startsWith("Number")) {
             val = xCount(card, svarval, ability);
@@ -820,6 +823,13 @@ public class AbilityUtils {
                 if (list != null) {
                     // there could be null inside!
                     list = Iterables.filter(list, Card.class);
+                    if (calcX[0].endsWith("LKI")) {
+                        CardCollection lki = new CardCollection();
+                        for (Card c : list) {
+                            lki.add(game.getChangeZoneLKIInfo(c));
+                        }
+                        list = lki;
+                    }
                     val = handlePaid(list, calcX[1], card, ability);
                 }
             }
