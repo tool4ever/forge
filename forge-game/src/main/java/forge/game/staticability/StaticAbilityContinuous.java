@@ -118,7 +118,7 @@ public final class StaticAbilityContinuous {
         se.setAffectedCards(affectedCards);
         se.setAffectedPlayers(affectedPlayers);
         se.setParams(params);
-        se.setTimestamp(hostCard.getTimestamp());
+        se.setTimestamp(hostCard.getLayerTimestamp());
 
         // nothing more to do
         if (stAb.hasParam("Affected") && affectedPlayers.isEmpty() && affectedCards.isEmpty()) {
@@ -606,7 +606,7 @@ public final class StaticAbilityContinuous {
 
             // Gain control
             if (layer == StaticAbilityLayer.CONTROL && params.containsKey("GainControl")) {
-                affectedCard.addTempController(hostCard.getController(), hostCard.getTimestamp());
+                affectedCard.addTempController(hostCard.getController(), se.getTimestamp());
             }
 
             // Gain text from another card
@@ -721,7 +721,7 @@ public final class StaticAbilityContinuous {
                         setToughness = AbilityUtils.calculateAmount(affectedCard, setT, stAb, true);
                     }
                     affectedCard.addNewPT(setPower, setToughness,
-                        hostCard.getTimestamp(), stAb.getId(), layer == StaticAbilityLayer.CHARACTERISTIC);
+                        se.getTimestamp(), stAb.getId(), layer == StaticAbilityLayer.CHARACTERISTIC);
                 }
             }
 
@@ -781,12 +781,12 @@ public final class StaticAbilityContinuous {
                 }
 
                 affectedCard.addChangedCardKeywords(newKeywords, removeKeywords,
-                        removeAllAbilities, hostCard.getTimestamp(), stAb.getId());
+                        removeAllAbilities, se.getTimestamp(), stAb.getId());
             }
 
             // add HIDDEN keywords
             if (!addHiddenKeywords.isEmpty()) {
-                affectedCard.addHiddenExtrinsicKeywords(hostCard.getTimestamp(), stAb.getId(), addHiddenKeywords);
+                affectedCard.addHiddenExtrinsicKeywords(se.getTimestamp(), stAb.getId(), addHiddenKeywords);
             }
 
             // add SVars
@@ -900,12 +900,12 @@ public final class StaticAbilityContinuous {
                     || removeAllAbilities) {
                     affectedCard.addChangedCardTraits(
                         addedAbilities, null, addedTrigger, addedReplacementEffects, addedStaticAbility, removeAllAbilities, removeNonMana,
-                        hostCard.getTimestamp(), stAb.getId()
+                        se.getTimestamp(), stAb.getId()
                     );
                 }
 
                 if (cantHaveKeyword != null) {
-                    affectedCard.addCantHaveKeyword(hostCard.getTimestamp(), cantHaveKeyword);
+                    affectedCard.addCantHaveKeyword(se.getTimestamp(), cantHaveKeyword);
                 }
             }
 
@@ -913,12 +913,12 @@ public final class StaticAbilityContinuous {
             if (addTypes != null || removeTypes != null || addAllCreatureTypes
                     || !remove.isEmpty()) {
                 affectedCard.addChangedCardTypes(addTypes, removeTypes, addAllCreatureTypes, remove,
-                        hostCard.getTimestamp(), stAb.getId(), true, stAb.hasParam("CharacteristicDefining"));
+                        se.getTimestamp(), stAb.getId(), true, stAb.hasParam("CharacteristicDefining"));
             }
 
             // add colors
             if (addColors != null) {
-                affectedCard.addColor(addColors, !overwriteColors, hostCard.getTimestamp(), stAb.getId(), stAb.hasParam("CharacteristicDefining"));
+                affectedCard.addColor(addColors, !overwriteColors, se.getTimestamp(), stAb.getId(), stAb.hasParam("CharacteristicDefining"));
             }
 
             if (layer == StaticAbilityLayer.RULES) {
@@ -1001,7 +1001,7 @@ public final class StaticAbilityContinuous {
         addIgnore.setIntrinsic(false);
         addIgnore.setApi(ApiType.InternalIgnoreEffect);
         addIgnore.setDescription(cost + " Ignore the effect until end of turn.");
-        sourceCard.addChangedCardTraits(ImmutableList.of(addIgnore), null, null, null, null, false, false, sourceCard.getTimestamp(), stAb.getId());
+        sourceCard.addChangedCardTraits(ImmutableList.of(addIgnore), null, null, null, null, false, false, sourceCard.getLayerTimestamp(), stAb.getId());
 
         final GameCommand removeIgnore = new GameCommand() {
             private static final long serialVersionUID = -5415775215053216360L;

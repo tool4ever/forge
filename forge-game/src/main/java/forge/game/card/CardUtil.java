@@ -322,7 +322,8 @@ public final class CardUtil {
 
         newCopy.copyChangedTextFrom(in);
 
-        newCopy.setTimestamp(in.getTimestamp());
+        newCopy.setGameTimestamp(in.getGameTimestamp());
+        newCopy.setLayerTimestamp(in.getLayerTimestamp());
 
         newCopy.setBestowTimestamp(in.getBestowTimestamp());
 

@@ -67,7 +67,11 @@ public class SacrificeAllEffect extends SpellAbilityEffect {
         // update cards that where using LKI
         CardCollection gameList = new CardCollection();
         for (Card sac : list) {
-            if (!sac.canBeSacrificedBy(sa, true)) {
+            final Card gameCard = game.getCardState(sac, null);
+            // gameCard is LKI in that case, the card is not in game anymore
+            // or the timestamp did change
+            // this should check Self too
+            if (gameCard == null || !sac.equalsWithGameTimestamp(gameCard) || !gameCard.canBeSacrificedBy(sa, true)) {
                 continue;
             }
             gameList.add(game.getCardState(sac, null));

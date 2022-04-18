@@ -18,7 +18,9 @@
 package forge.game;
 
 import com.google.common.base.Predicate;
+
 import com.google.common.collect.*;
+
 import forge.GameCommand;
 import forge.StaticData;
 import forge.card.CardStateName;
@@ -260,7 +262,7 @@ public class GameAction {
                 copied = CardFactory.copyCard(c, false);
             }
 
-            copied.setTimestamp(c.getTimestamp());
+            copied.setGameTimestamp(c.getGameTimestamp());
 
             if (zoneTo.is(ZoneType.Stack)) {
                 // try not to copy changed stats when moving to stack
@@ -388,7 +390,7 @@ public class GameAction {
 
         if (!zoneTo.is(ZoneType.Stack) && !suppress) {
             // reset timestamp in changezone effects so they have same timestamp if ETB simultaneously
-            copied.setTimestamp(game.getNextTimestamp());
+            copied.setGameTimestamp(game.getNextTimestamp());
         }
 
         copied.getOwner().removeInboundToken(copied);
@@ -483,12 +485,13 @@ public class GameAction {
             }
 
             if (zoneFrom.is(ZoneType.Stack) && toBattlefield) {
+
                 // 400.7a Effects from static abilities that give a permanent spell on the stack an ability
                 // that allows it to be cast for an alternative cost continue to apply to the permanent that spell becomes.
                 if (c.getCastSA() != null && !c.getCastSA().isIntrinsic() && c.getCastSA().getKeyword() != null) {
                     KeywordInterface ki = c.getCastSA().getKeyword();
                     ki.setHostCard(copied);
-                    copied.addChangedCardKeywordsInternal(ImmutableList.of(ki), null, false, copied.getTimestamp(), 0, true);
+                    copied.addChangedCardKeywordsInternal(ImmutableList.of(ki), null, false, copied.getGameTimestamp(), 0, true);
                 }
 
                 // 607.2q linked ability can find cards exiled as cost while it was a spell
@@ -1119,7 +1122,7 @@ public class GameAction {
             public int compare(final StaticAbility a, final StaticAbility b) {
                 return ComparisonChain.start()
                         .compareTrueFirst(a.hasParam("CharacteristicDefining"), b.hasParam("CharacteristicDefining"))
-                        .compare(a.getHostCard().getTimestamp(), b.getHostCard().getTimestamp())
+                        .compare(a.getHostCard().getLayerTimestamp(), b.getHostCard().getLayerTimestamp())
                         .result();
             }
         };
@@ -1833,7 +1836,7 @@ public class GameAction {
         long ts = 0;
 
         for (final Card crd : worlds) {
-            long crdTs = crd.getTimestamp();
+            long crdTs = crd.getGameTimestamp();
             if (crdTs > ts) {
                 ts = crdTs;
                 toKeep.clear();

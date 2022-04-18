@@ -492,6 +492,7 @@ public abstract class SpellAbilityEffect {
         final Card hostCard = sa.getHostCard();
         final Game game = hostCard.getGame();
         final Card eff = new Card(game.nextCardId(), game);
+
         String finalname = name.replaceAll("\\([^()]*\\)", "");
         if (finalname.contains(" 's Effect")) {
             finalname = finalname.replace( " 's Effect", "");
@@ -515,7 +516,7 @@ public abstract class SpellAbilityEffect {
                 e.printStackTrace();
             }
         }
-        eff.setTimestamp(game.getNextTimestamp());
+        eff.setGameTimestamp(game.getNextTimestamp());
         eff.setName(finalname);
         eff.setColor(hostCard.getColor().getColor());
         // if name includes emblem then it should be one
@@ -738,7 +739,7 @@ public abstract class SpellAbilityEffect {
                         }
                         // better check if card didn't changed zones again?
                         Card newCard = game.getCardState(c, null);
-                        if (newCard == null || !newCard.equalsWithTimestamp(c)) {
+                        if (newCard == null || !newCard.equalsWithGameTimestamp(c)) {
                             continue;
                         }
                         if (sa.hasAdditionalAbility("ReturnAbility")) {
