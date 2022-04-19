@@ -1,6 +1,8 @@
 package forge.game.ability.effects;
 
+
 import forge.game.ability.AbilityUtils;
+import forge.game.Game;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.card.CardCollection;
@@ -19,6 +21,7 @@ public class TapEffect extends SpellAbilityEffect {
     @Override
     public void resolve(SpellAbility sa) {
         final Card card = sa.getHostCard();
+        final Game game = card.getGame();
         final boolean remTapped = sa.hasParam("RememberTapped");
         final boolean alwaysRem = sa.hasParam("AlwaysRemember");
         if (remTapped) {
@@ -44,12 +47,22 @@ public class TapEffect extends SpellAbilityEffect {
             if (tgtC.isPhasedOut()) {
                 continue;
             }
-            if (tgtC.isInPlay()) {
-                if (tgtC.isUntapped() && remTapped || alwaysRem) {
-                    card.addRemembered(tgtC);
-                }
-                tgtC.tap(true);
+
+            if (!tgtC.isInPlay()) {
+                continue;
             }
+            // check if the object is still in game or if it was moved
+            Card gameCard = game.getCardState(tgtC, null);
+            // gameCard is LKI in that case, the card is not in game anymore
+            // or the timestamp did change
+            // this should check Self too
+            if (gameCard == null || !tgtC.equalsWithGameTimestamp(gameCard)) {
+                continue;
+            }
+            if (gameCard.isUntapped() && remTapped || alwaysRem) {
+                card.addRemembered(gameCard);
+            }
+            gameCard.tap(true);
             if (sa.hasParam("ETB")) {
                 // do not fire Taps triggers
                 tgtC.setTapped(true);

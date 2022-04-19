@@ -64,8 +64,16 @@ public class ManifestEffect extends SpellAbilityEffect {
                 CardLists.shuffle(tgtCards);
             }
 
-            for (Card c : tgtCards) {
-                Card rem = c.manifest(p, sa, moveParams);
+            for (Card tgtC : tgtCards) {
+                // check if the object is still in game or if it was moved
+                Card gameCard = game.getCardState(tgtC, null);
+                // gameCard is LKI in that case, the card is not in game anymore
+                // or the timestamp did change
+                // this should check Self too
+                if (gameCard == null || !tgtC.equalsWithGameTimestamp(gameCard)) {
+                    continue;
+                }
+                Card rem = gameCard.manifest(p, sa, moveParams);
                 if (sa.hasParam("RememberManifested") && rem != null && rem.isManifested()) {
                     source.addRemembered(rem);
                 }

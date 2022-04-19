@@ -66,7 +66,34 @@ public class WrappedAbility extends Ability {
             ApiType.SacrificeAll,
             ApiType.Pump,
 
-            ApiType.DelayedTrigger
+            ApiType.DelayedTrigger,
+
+            ApiType.EachDamage,
+
+            ApiType.Explore,
+            ApiType.Protection,
+            ApiType.ProtectionAll,
+            ApiType.Proliferate,
+            ApiType.CopyPermanent,
+            ApiType.Debuff,
+            ApiType.Venture,
+            ApiType.Manifest,
+            ApiType.Scry,
+            ApiType.SetInMotion,
+            ApiType.Shuffle,
+            ApiType.Surveil,
+            ApiType.Tap,
+            ApiType.TapAll,
+            ApiType.TapOrUntap,
+            ApiType.TapOrUntapAll,
+            ApiType.Untap,
+            ApiType.UntapAll,
+            ApiType.Unattach,
+            ApiType.UnattachAll,
+
+            ApiType.Poison,
+            ApiType.Vote
+
             );
 
     private final SpellAbility sa;

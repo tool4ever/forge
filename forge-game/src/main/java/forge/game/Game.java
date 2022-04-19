@@ -1140,7 +1140,7 @@ public class Game {
         }
         for (List<Pair<Card, Integer>> l : countersAddedThisTurn.row(cType).values()) {
             for (Pair<Card, Integer> p : l) {
-                if (p.getKey().equalsWithTimestamp(card)) {
+                if (p.getKey().equalsWithGameTimestamp(card)) {
                     result += p.getValue();
                 }
             }

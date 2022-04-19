@@ -644,7 +644,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
                         final Card card = (Card) o;
                         Card current = game.getCardState(card);
                         if (current != null) {
-                            invalidTarget = current.getGameTimestamp() != card.getGameTimestamp();
+                            invalidTarget = !current.equalsWithGameTimestamp(card);
                         }
                         invalidTarget = invalidTarget || !sa.canTarget(card);
                     } else if (o instanceof SpellAbility) {
@@ -796,7 +796,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             return false;
         }
 
-        if (playerTurn.hasLost()) {
+        if (!playerTurn.isInGame()) {
             playerTurn = game.getNextPlayerAfter(playerTurn);
         }
 

@@ -39,11 +39,11 @@ public class TapAllEffect extends SpellAbilityEffect {
 
         cards = AbilityUtils.filterListByType(cards, sa.getParam("ValidCards"), sa);
 
-        for (final Card c : cards) {
+        for (final Card tgtC : cards) {
             if (remTapped) {
-                card.addRemembered(c);
+                card.addRemembered(tgtC);
             }
-            c.tap(true);
+            tgtC.tap(true);
         }
     }
 

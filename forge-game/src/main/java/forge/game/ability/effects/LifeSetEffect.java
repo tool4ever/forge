@@ -1,6 +1,5 @@
 package forge.game.ability.effects;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.Lists;
@@ -21,7 +20,7 @@ public class LifeSetEffect extends SpellAbilityEffect {
     public void resolve(SpellAbility sa) {
         final boolean redistribute = sa.hasParam("Redistribute");
         final int lifeAmount = redistribute ? 0 : AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("LifeAmount"), sa);
-        final List<Integer> lifetotals = new ArrayList<>();
+        final List<Integer> lifetotals = Lists.newArrayList();
         final PlayerCollection players = getTargetPlayers(sa);
 
         if (redistribute) {
@@ -70,7 +69,7 @@ public class LifeSetEffect extends SpellAbilityEffect {
                 // combination is valid, check next
                 PlayerCollection nextPlayers = new PlayerCollection(players);
                 nextPlayers.remove(p);
-                List<Integer> nextChoices = new ArrayList<>(remainingChoices);
+                List<Integer> nextChoices = Lists.newArrayList(remainingChoices);
                 nextChoices.remove(choice);
                 nextChoices = getDistribution(nextPlayers, false, nextChoices);
                 if (nextChoices.isEmpty()) {
@@ -87,7 +86,7 @@ public class LifeSetEffect extends SpellAbilityEffect {
                 return validChoices;
             }
         }
-        return new ArrayList<>();
+        return Lists.newArrayList();
     }
 
     /* (non-Javadoc)

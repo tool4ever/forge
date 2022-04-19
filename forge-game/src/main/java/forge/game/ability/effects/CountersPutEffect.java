@@ -514,6 +514,7 @@ public class CountersPutEffect extends SpellAbilityEffect {
                         String message = Localizer.getInstance().getMessage(
                                 "lblDoYouWantPutTargetP1P1CountersOnCard", String.valueOf(counterAmount),
                                 CardTranslation.getTranslatedName(gameCard.getName()));
+
                         placer = pc.chooseSingleEntityForEffect(activator.getOpponents(), sa,
                                 Localizer.getInstance().getMessage("lblChooseAnOpponent"), params);
 

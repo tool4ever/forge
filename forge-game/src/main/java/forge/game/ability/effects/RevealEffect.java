@@ -17,6 +17,7 @@ import forge.game.spellability.SpellAbility;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
 import forge.util.Aggregates;
+import forge.util.Lang;
 
 public class RevealEffect extends SpellAbilityEffect {
 
@@ -98,7 +99,7 @@ public class RevealEffect extends SpellAbilityEffect {
         final List<Player> tgtPlayers = getTargetPlayers(sa);
 
         if (tgtPlayers.size() > 0) {
-            sb.append(tgtPlayers.get(0)).append(" reveals ");
+            sb.append(Lang.joinHomogenous(tgtPlayers)).append(" reveals ");
             if (sa.hasParam("AnyNumber")) {
                 sb.append("any number of cards ");
             } else if (sa.hasParam("NumCards")) {

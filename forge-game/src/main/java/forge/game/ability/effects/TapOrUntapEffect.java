@@ -1,7 +1,6 @@
 package forge.game.ability.effects;
 
-import java.util.List;
-
+import forge.game.Game;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.player.PlayerController;
@@ -29,27 +28,31 @@ public class TapOrUntapEffect extends SpellAbilityEffect {
 
     @Override
     public void resolve(SpellAbility sa) {
-        final List<Card> tgtCards = getTargetCards(sa);
+        final Game game = sa.getHostCard().getGame();
         PlayerController pc = sa.getActivatingPlayer().getController();
 
-        for (final Card tgtC : tgtCards) {
+        for (final Card tgtC : getTargetCards(sa)) {
             if (!tgtC.isInPlay()) {
                 continue;
             }
-            if (tgtC.isPhasedOut()) {
+
+            // check if the object is still in game or if it was moved
+            Card gameCard = game.getCardState(tgtC, null);
+            // gameCard is LKI in that case, the card is not in game anymore
+            // or the timestamp did change
+            // this should check Self too
+            if (gameCard == null || !tgtC.equalsWithGameTimestamp(gameCard)) {
                 continue;
             }
-
             // If the effected card is controlled by the same controller of the SA, default to untap.
-            boolean tap = pc.chooseBinary(sa, Localizer.getInstance().getMessage("lblTapOrUntapTarget", CardTranslation.getTranslatedName(tgtC.getName())), PlayerController.BinaryChoiceType.TapOrUntap,
-                    !tgtC.getController().equals(sa.getActivatingPlayer()) );
+            boolean tap = pc.chooseBinary(sa, Localizer.getInstance().getMessage("lblTapOrUntapTarget", CardTranslation.getTranslatedName(gameCard.getName())), PlayerController.BinaryChoiceType.TapOrUntap,
+                    !gameCard.getController().equals(sa.getActivatingPlayer()));
 
             if (tap) {
-                tgtC.tap(true);
+                gameCard.tap(true);
             } else {
-                tgtC.untap(true);
+                gameCard.untap(true);
             }
         }
     }
-
 }
