@@ -71,17 +71,17 @@ public class WrappedAbility extends Ability {
             ApiType.EachDamage,
 
             ApiType.Explore,
-            ApiType.Protection,
+            ApiType.Protection, // should not care about triggered
             ApiType.ProtectionAll,
-            ApiType.Proliferate,
+            ApiType.Proliferate, // only player no triggered interaction
             ApiType.CopyPermanent,
-            ApiType.Debuff,
-            ApiType.Venture,
-            ApiType.Manifest,
-            ApiType.Scry,
+            ApiType.Debuff, // updated
+            ApiType.Venture, // only player
+            ApiType.Manifest, // no triggered
+            ApiType.Scry, // only player
             ApiType.SetInMotion,
-            ApiType.Shuffle,
-            ApiType.Surveil,
+            ApiType.Shuffle, // only player
+            ApiType.Surveil, // only player
             ApiType.Tap,
             ApiType.TapAll,
             ApiType.TapOrUntap,
@@ -91,9 +91,8 @@ public class WrappedAbility extends Ability {
             ApiType.Unattach,
             ApiType.UnattachAll,
 
-            ApiType.Poison,
-            ApiType.Vote
-
+            ApiType.Poison, // only player
+            ApiType.Vote // only player
             );
 
     private final SpellAbility sa;
