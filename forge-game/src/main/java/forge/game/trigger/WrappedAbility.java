@@ -55,9 +55,9 @@ public class WrappedAbility extends Ability {
             ApiType.RemoveCounter,
             ApiType.AddOrRemoveCounter,
             ApiType.MoveCounter,
-            ApiType.Draw,
-            ApiType.GainLife,
-            ApiType.LoseLife,
+            ApiType.Draw, // only player
+            ApiType.GainLife, // only player
+            ApiType.LoseLife, // only player
             ApiType.ChangeZone,
             ApiType.Destroy,
             ApiType.Token,
@@ -72,24 +72,26 @@ public class WrappedAbility extends Ability {
 
             ApiType.Explore,
             ApiType.Protection, // should not care about triggered
-            ApiType.ProtectionAll,
+            ApiType.ProtectionAll, // No Triggered
             ApiType.Proliferate, // only player no triggered interaction
             ApiType.CopyPermanent,
             ApiType.Debuff, // updated
             ApiType.Venture, // only player
             ApiType.Manifest, // no triggered
             ApiType.Scry, // only player
-            ApiType.SetInMotion,
+            ApiType.SetInMotion, // No Triggered
             ApiType.Shuffle, // only player
             ApiType.Surveil, // only player
-            ApiType.Tap,
-            ApiType.TapAll,
-            ApiType.TapOrUntap,
-            ApiType.TapOrUntapAll,
-            ApiType.Untap,
-            ApiType.UntapAll,
-            ApiType.Unattach,
-            ApiType.UnattachAll,
+            ApiType.Tap, // Done
+            ApiType.TapAll, // uses filterListByType
+            ApiType.TapOrUntap, // No TriggeredCard
+            ApiType.TapOrUntapAll, // No TriggeredCard
+            ApiType.Untap, // Done
+            ApiType.UntapAll, // only player
+            ApiType.Unattach, // No Triggered
+            ApiType.UnattachAll, // No Triggered
+
+            ApiType.RemoveFromCombat, // Done
 
             ApiType.Poison, // only player
             ApiType.Vote // only player
