@@ -20,7 +20,6 @@ package forge.game;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -28,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 import forge.game.card.*;
+
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.base.Predicate;
@@ -242,18 +243,18 @@ public class Game {
     }
 
     // methods that deal with saving, retrieving and clearing LKI information about cards on zone change
-    private final HashMap<Integer, Card> changeZoneLKIInfo = new HashMap<>();
+    private final Table<Integer, Long, Card> changeZoneLKIInfo = HashBasedTable.create();
     public final void addChangeZoneLKIInfo(Card lki) {
         if (lki == null) {
             return;
         }
-        changeZoneLKIInfo.put(lki.getId(), lki);
+        changeZoneLKIInfo.put(lki.getId(), lki.getGameTimestamp(), lki);
     }
     public final Card getChangeZoneLKIInfo(Card c) {
         if (c == null) {
             return null;
         }
-        return changeZoneLKIInfo.getOrDefault(c.getId(), c);
+        return ObjectUtils.defaultIfNull(changeZoneLKIInfo.get(c.getId(), c.getGameTimestamp()), c);
     }
     public final void clearChangeZoneLKIInfo() {
         changeZoneLKIInfo.clear();
