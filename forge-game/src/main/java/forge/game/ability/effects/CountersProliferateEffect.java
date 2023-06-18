@@ -49,6 +49,8 @@ public class CountersProliferateEffect extends SpellAbilityEffect {
                 num = (int) repParams.get(AbilityKey.Num);
                 break;
             }
+            default:
+                return;
         }
 
         PlayerController pc = p.getController();
