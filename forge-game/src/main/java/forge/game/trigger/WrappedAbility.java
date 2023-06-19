@@ -69,6 +69,9 @@ public class WrappedAbility extends Ability {
             ApiType.DelayedTrigger,
 
             ApiType.EachDamage,
+            ApiType.WinsGame, // only player
+            ApiType.Incubate, // only player
+            ApiType.Mill, // only player
 
             ApiType.Explore,
             ApiType.Protection, // should not care about triggered
@@ -76,7 +79,6 @@ public class WrappedAbility extends Ability {
             ApiType.Proliferate, // only player no triggered interaction
             ApiType.CopyPermanent,
             ApiType.Debuff, // updated
-            ApiType.Venture, // only player
             ApiType.Manifest, // no triggered
             ApiType.Scry, // only player
             ApiType.SetInMotion, // No Triggered
@@ -91,10 +93,34 @@ public class WrappedAbility extends Ability {
             ApiType.Unattach, // No Triggered
             ApiType.UnattachAll, // No Triggered
 
+            ApiType.Regeneration, // Replacement Effect only
+
             ApiType.RemoveFromCombat, // Done
 
+            // only Replacement Effects, no Trigger
+            ApiType.ReplaceCounter,
+            ApiType.ReplaceDamage,
+            ApiType.ReplaceEffect,
+            ApiType.ReplaceMana,
+            ApiType.ReplaceSplitDamage,
+            ApiType.ReplaceToken,
+
+            ApiType.RollDice, // only player
+            ApiType.RollPlanarDice, // only player
+            ApiType.Seek, // only player
+
+            ApiType.TakeInitiative, // only player
+
             ApiType.Poison, // only player
-            ApiType.Vote // only player
+            ApiType.Venture, // only player
+            ApiType.Vote, // only player
+            // internal
+            ApiType.BlankLine,
+            ApiType.DamageResolve,
+            ApiType.ChangeZoneResolve,
+            ApiType.InternalLegendaryRule,
+            ApiType.InternalIgnoreEffect,
+            ApiType.UpdateRemember
             );
 
     private final SpellAbility sa;
