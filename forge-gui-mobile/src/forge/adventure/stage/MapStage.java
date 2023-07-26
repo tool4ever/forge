@@ -471,6 +471,11 @@ public class MapStage extends GameStage {
         if (difficultyData.spawnRank == 2 && !spawnHard) return false;
         if (difficultyData.spawnRank == 1 && !spawnNorm) return false;
         if (difficultyData.spawnRank == 0 && !spawnEasy) return false;
+
+        if (prop.containsKey("spawnCondition") && !prop.get("spawnCondition").toString().isEmpty()){
+
+        }
+
         return true;
     }
 
@@ -668,7 +673,7 @@ public class MapStage extends GameStage {
                         //TODO: Ability to move them (using a sequence such as "UULU" for up, up, left, up).
                         break;
                     case "inn":
-                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(InnScene.instance(TileMapScene.instance(), TileMapScene.instance().rootPoint.getID(), id))));
+                        addMapActor(obj, new OnCollide(() -> Forge.switchScene(InnScene.instance(TileMapScene.instance(), TileMapScene.instance().rootPoint.getID(), changes, id))));
                         break;
                     case "spellsmith":
                         addMapActor(obj, new OnCollide(() -> Forge.switchScene(SpellSmithScene.instance())));
@@ -828,7 +833,7 @@ public class MapStage extends GameStage {
                                 sprite.setY(actor.getY() + Float.parseFloat(prop.get("signYOffset").toString()));
                                 addMapActor(sprite);
 
-                                if (!(data.overlaySprite == null | data.overlaySprite.isEmpty())) {
+                                if (!(data.overlaySprite == null || data.overlaySprite.isEmpty())) {
                                     TextureSprite overlay = new TextureSprite(Config.instance().getAtlas(data.spriteAtlas).createSprite(data.overlaySprite));
                                     overlay.setX(actor.getX() + Float.parseFloat(prop.get("signXOffset").toString()));
                                     overlay.setY(actor.getY() + Float.parseFloat(prop.get("signYOffset").toString()));
@@ -1088,7 +1093,6 @@ public class MapStage extends GameStage {
                 if (actor instanceof EnemySprite) {
                     EnemySprite mob = (EnemySprite) actor;
                     currentMob = mob;
-                    currentMob.clearCollisionHeight();
                     resetPosition();
                     if (mob.dialog != null && mob.dialog.canShow()) { //This enemy has something to say. Display a dialog like if it was a DialogActor but only if dialogue is possible.
                         mob.dialog.activate();
@@ -1116,6 +1120,7 @@ public class MapStage extends GameStage {
 
     public void beginDuel(EnemySprite mob) {
         if (mob == null) return;
+        mob.clearCollisionHeight();
         currentMob = mob;
         player.setAnimation(CharacterSprite.AnimationTypes.Attack);
         player.playEffect(Paths.EFFECT_SPARKS, 0.5f);
@@ -1125,6 +1130,8 @@ public class MapStage extends GameStage {
         int duration = mob.getData().boss ? 400 : 200;
         if (Controllers.getCurrent() != null && Controllers.getCurrent().canVibrate())
             Controllers.getCurrent().startVibration(duration, 1);
+        Forge.restrictAdvMenus = true;
+        player.clearCollisionHeight();
         startPause(0.8f, () -> {
             Forge.setCursor(null, Forge.magnifyToggle ? "1" : "2");
             SoundSystem.instance.play(SoundEffectType.ManaBurn, false);
@@ -1159,6 +1166,7 @@ public class MapStage extends GameStage {
         if (dialogStage == null){
             setDialogStage(GameHUD.getInstance());
         }
+        GameHUD.getInstance().playerIdle();
         dialogButtonMap.clear();
         for (int i = 0; i < dialog.getButtonTable().getCells().size; i++) {
             dialogButtonMap.add((TextraButton) dialog.getButtonTable().getCells().get(i).getActor());

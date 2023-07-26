@@ -266,7 +266,7 @@ public class TriggerSpellAbilityCastOrCopy extends Trigger {
         final SpellAbilityStackInstance si = sa.getHostCard().getGame().getStack().getInstanceFromSpellAbility(castSA);
         final SpellAbility saForTargets = si != null ? si.getSpellAbility(true) : castSA;
         sa.setTriggeringObject(AbilityKey.Card, castSA.getHostCard());
-        sa.setTriggeringObject(AbilityKey.SpellAbility, castSA.isWrapper() ? castSA : castSA.copy(castSA.getHostCard(), true));
+        sa.setTriggeringObject(AbilityKey.SpellAbility, castSA);
         sa.setTriggeringObject(AbilityKey.StackInstance, si);
         final List<TargetChoices> allTgts = saForTargets.getAllTargetChoices();
         if (!allTgts.isEmpty()) {
@@ -279,11 +279,12 @@ public class TriggerSpellAbilityCastOrCopy extends Trigger {
         sa.setTriggeringObject(AbilityKey.LifeAmount, castSA.getAmountLifePaid());
         sa.setTriggeringObjectsFrom(
                 runParams,
-            AbilityKey.Player,
-            AbilityKey.Activator,
-            AbilityKey.CurrentStormCount,
-            AbilityKey.CurrentCastSpells
-        );
+                AbilityKey.CardLKI,
+                AbilityKey.Player,
+                AbilityKey.Activator,
+                AbilityKey.CurrentStormCount,
+                AbilityKey.CurrentCastSpells
+                );
     }
 
     @Override

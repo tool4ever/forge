@@ -31,8 +31,7 @@ public class DraftScene extends ForgeScene {
     @Override
     public void enter() {
         GameHUD.getInstance().getTouchpad().setVisible(false);
-        GameHUD.getInstance().pauseMusic();
-        GameHUD.getInstance().playAudio();
+        GameHUD.getInstance().switchAudio();
         screen = null;
         getScreen();
         screen.refresh();
@@ -41,7 +40,7 @@ public class DraftScene extends ForgeScene {
     @Override
     public FScreen getScreen() {
         if (screen==null){
-            screen = new AdventureDeckEditor(false, currentEvent);
+            screen = new AdventureDeckEditor(currentEvent);
         }
         return screen;
     }

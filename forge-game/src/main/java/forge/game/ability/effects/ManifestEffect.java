@@ -12,6 +12,7 @@ import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.card.CardCollectionView;
 import forge.game.card.CardLists;
+import forge.game.card.CardZoneTable;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
@@ -64,7 +65,7 @@ public class ManifestEffect extends SpellAbilityEffect {
                 CardLists.shuffle(tgtCards);
             }
 
-            for (Card tgtC : tgtCards) {
+            for (Card c : tgtCards) {
                 // check if the object is still in game or if it was moved
                 Card gameCard = game.getCardState(tgtC, null);
                 // gameCard is LKI in that case, the card is not in game anymore
@@ -73,9 +74,17 @@ public class ManifestEffect extends SpellAbilityEffect {
                 if (gameCard == null || !tgtC.equalsWithGameTimestamp(gameCard)) {
                     continue;
                 }
+                CardZoneTable triggerList = new CardZoneTable();
+                ZoneType origin = gameCard.getZone().getZoneType();
                 Card rem = gameCard.manifest(p, sa, moveParams);
-                if (sa.hasParam("RememberManifested") && rem != null && rem.isManifested()) {
-                    source.addRemembered(rem);
+                if (rem != null) {
+                    if (sa.hasParam("RememberManifested") && rem.isManifested()) {
+                        source.addRemembered(rem);
+                    }
+                    // 701.34d. If an effect instructs a player to manifest multiple cards from their library,
+                    // those cards are manifested one at a time.
+                    triggerList.put(origin, ZoneType.Battlefield, rem);
+                    triggerList.triggerChangesZoneAll(game, sa);
                 }
             }
         }

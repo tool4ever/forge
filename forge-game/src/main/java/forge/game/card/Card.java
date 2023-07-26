@@ -35,7 +35,6 @@ import forge.game.GameActionUtil;
 import forge.game.GameEntity;
 import forge.game.GameEntityCounterTable;
 import forge.game.GameStage;
-import forge.game.GlobalRuleChange;
 import forge.game.IHasSVars;
 import forge.game.ability.AbilityFactory;
 import forge.game.ability.AbilityKey;
@@ -152,6 +151,14 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private final Table<StaticAbility, String, Trigger> storedTrigger = TreeBasedTable.create();
     private final Table<StaticAbility, String, ReplacementEffect> storedReplacementEffect = TreeBasedTable.create();
     private final Table<StaticAbility, String, StaticAbility> storedStaticAbility = TreeBasedTable.create();
+
+    private final Table<StaticAbility, SpellAbility, SpellAbility> storedSpellAbililityByText = HashBasedTable.create();
+    private final Table<StaticAbility, String, SpellAbility> storedSpellAbililityGainedByText = TreeBasedTable.create();
+    private final Table<StaticAbility, Trigger, Trigger> storedTriggerByText = HashBasedTable.create();
+    private final Table<StaticAbility, ReplacementEffect, ReplacementEffect> storedReplacementEffectByText = HashBasedTable.create();
+    private final Table<StaticAbility, StaticAbility, StaticAbility> storedStaticAbilityByText = HashBasedTable.create();
+
+    private final Map<Triple<String, Long, Long>, KeywordInterface> storedKeywordByText = Maps.newHashMap();
 
     // x=timestamp y=StaticAbility id
     private final Table<Long, Long, CardColor> changedCardColorsByText = TreeBasedTable.create(); // Layer 3 by Text Change
@@ -4539,6 +4546,72 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         return result;
     }
 
+    public final SpellAbility getSpellAbilityForStaticAbilityByText(final SpellAbility sa, final StaticAbility stAb) {
+        SpellAbility result = storedSpellAbililityByText.get(stAb, sa);
+        if (result == null) {
+            result = sa.copy(this, false);
+            result.setOriginalAbility(sa); // need to be set to get the Once Per turn Clause correct
+            result.setGrantorStatic(stAb);
+            result.setIntrinsic(true); // needs to be changed by CardTextChanges
+            storedSpellAbililityByText.put(stAb, sa, result);
+        }
+        return result;
+    }
+
+    public final SpellAbility getSpellAbilityForStaticAbilityGainedByText(final String str, final StaticAbility stAb) {
+        SpellAbility result = storedSpellAbililityGainedByText.get(stAb, str);
+        if (result == null) {
+            result = AbilityFactory.getAbility(str, this, stAb);
+            result.setIntrinsic(true); // needs to be affected by Text
+            result.setGrantorStatic(stAb);
+            storedSpellAbililityGainedByText.put(stAb, str, result);
+        }
+        return result;
+    }
+
+    public final Trigger getTriggerForStaticAbilityByText(final Trigger tr, final StaticAbility stAb) {
+        Trigger result = storedTriggerByText.get(stAb, tr);
+        if (result == null) {
+            result = tr.copy(this, false);
+            result.setIntrinsic(true); // needs to be changed by CardTextChanges
+            storedTriggerByText.put(stAb, tr, result);
+        }
+        return result;
+    }
+
+    public final ReplacementEffect getReplacementEffectForStaticAbilityByText(final ReplacementEffect re, final StaticAbility stAb) {
+        ReplacementEffect result = storedReplacementEffectByText.get(stAb, re);
+        if (result == null) {
+            result = re.copy(this, false);
+            result.setIntrinsic(true); // needs to be changed by CardTextChanges
+            storedReplacementEffectByText.put(stAb, re, result);
+        }
+        return result;
+    }
+
+    public final StaticAbility getStaticAbilityForStaticAbilityByText(final StaticAbility st, final StaticAbility stAb) {
+        StaticAbility result = storedStaticAbilityByText.get(stAb, st);
+        if (result == null) {
+            result = st.copy(this, false);
+            result.setIntrinsic(true); // needs to be changed by CardTextChanges
+            storedStaticAbilityByText.put(stAb, st, result);
+        }
+        return result;
+    }
+
+    public final KeywordInterface getKeywordForStaticAbilityByText(final KeywordInterface ki, final StaticAbility stAb, long idx) {
+        Triple<String, Long, Long> triple = Triple.of(ki.getOriginal(), (long)stAb.getId(), idx);
+        KeywordInterface result = storedKeywordByText.get(triple);
+        if (result == null) {
+            result = ki.copy(this, false);
+            result.setStaticId(stAb.getId());
+            result.setIdx(idx);
+            result.setIntrinsic(true);
+            storedKeywordByText.put(triple, result);
+        }
+        return result;
+    }
+
     public final void addChangedCardTraits(Collection<SpellAbility> spells, Collection<SpellAbility> removedAbilities,
             Collection<Trigger> trigger, Collection<ReplacementEffect> replacements, Collection<StaticAbility> statics,
             boolean removeAll, boolean removeNonMana, long timestamp, long staticId) {
@@ -5429,18 +5502,17 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public final boolean isEmblem() {
         return isEmblem;
     }
-    public final void setBoon(final boolean isBoon0) {
-        isBoon = isBoon0;
-        view.updateBoon(this);
+    public final void setEmblem(final boolean isEmblem0) {
+        isEmblem = isEmblem0;
+        view.updateEmblem(this);
     }
 
     public final boolean isBoon() {
         return isBoon;
     }
-
-    public final void setEmblem(final boolean isEmblem0) {
-        isEmblem = isEmblem0;
-        view.updateEmblem(this);
+    public final void setBoon(final boolean isBoon0) {
+        isBoon = isBoon0;
+        view.updateBoon(this);
     }
 
     /*
@@ -5834,10 +5906,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             subtractCounter(CounterType.get(CounterEnumType.DEFENSE), damageIn, true);
         }
         if (isCreature()) {
-            boolean wither = game.getStaticEffects().getGlobalRuleChange(GlobalRuleChange.alwaysWither)
-                    || source.hasKeyword(Keyword.WITHER) || source.hasKeyword(Keyword.INFECT);
-
-            if (wither) { // 120.3d
+            if (source.isWitherDamage()) { // 120.3d
                 addCounter(CounterEnumType.M1M1, damageIn, source.getController(), counterTable);
                 damageType = DamageType.M1M1Counters;
             }
@@ -6051,7 +6120,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public void becomesCrewed(SpellAbility sa) {
-        timesCrewedThisTurn += 1;
+        timesCrewedThisTurn++;
         Map<AbilityKey, Object> runParams = AbilityKey.newMap();
         runParams.put(AbilityKey.Vehicle, this);
         runParams.put(AbilityKey.Crew, sa.getPaidList("TappedCards", true));
@@ -6953,10 +7022,29 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
 
         if (StringUtils.isNotBlank(set)) {
             cp = StaticData.instance().getVariantCards().getCard(name, set);
-            return cp == null ? StaticData.instance().getCommonCards().getCard(name, set) : cp;
+            if (cp != null) {
+                return cp;
+            }
+            cp = StaticData.instance().getCommonCards().getCard(name, set);
+            if (cp != null) {
+                return cp;
+            }
         }
+        //no specific set for variant
         cp = StaticData.instance().getVariantCards().getCard(name);
-        return cp != null ? cp : StaticData.instance().getCommonCards().getCardFromEditions(name, CardArtPreference.LATEST_ART_ALL_EDITIONS);
+        if (cp != null) {
+            return cp;
+        }
+        //try to get from user preference if available
+        CardDb.CardArtPreference cardArtPreference = StaticData.instance().getCardArtPreference();
+        if (cardArtPreference == null) //fallback
+            cardArtPreference = CardArtPreference.ORIGINAL_ART_CORE_EXPANSIONS_REPRINT_ONLY;
+        cp = StaticData.instance().getCommonCards().getCardFromEditions(name, cardArtPreference);
+        if (cp != null) {
+            return cp;
+        }
+        //lastoption
+        return StaticData.instance().getCommonCards().getCard(name);
     }
 
     /**
@@ -7470,5 +7558,12 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
             return false;
         }
         return !StaticAbilityActivateAbilityAsIfHaste.canActivate(this);
+    }
+
+    public boolean isWitherDamage() {
+        if (this.hasKeyword(Keyword.WITHER) || this.hasKeyword(Keyword.INFECT)) {
+            return true;
+        }
+        return StaticAbilityWitherDamage.isWitherDamage(this);
     }
 }

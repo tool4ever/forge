@@ -44,7 +44,6 @@ import forge.game.ability.AbilityKey;
 import forge.game.ability.AbilityUtils;
 import forge.game.ability.ApiType;
 import forge.game.card.Card;
-import forge.game.card.CardCollection;
 import forge.game.card.CardUtil;
 import forge.game.event.EventValueChangeType;
 import forge.game.event.GameEventCardStatsChanged;
@@ -61,7 +60,6 @@ import forge.game.spellability.SpellAbilityStackInstance;
 import forge.game.spellability.TargetChoices;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
-import forge.game.trigger.WrappedAbility;
 import forge.util.TextUtil;
 
 /**
@@ -134,12 +132,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
 
     public final void addAndUnfreeze(final SpellAbility ability) {
         final Card source = ability.getHostCard();
-
-        if (!ability.isCopied() && ability.isAbility()) {
-            // Copied abilities aren't activated, so they shouldn't change these values
-            source.addAbilityActivated(ability);
-            ability.checkActivationResolveSubs();
-        }
 
         // if the ability is a spell, but not a copied spell and its not already
         // on the stack zone, move there
@@ -226,7 +218,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         return Iterables.filter(undoStack, CardTraitPredicates.isHostCard(c));
     }
 
-    public final void add(final SpellAbility sp) {
+    public final void add(SpellAbility sp) {
         SpellAbilityStackInstance si = null;
         final Card source = sp.getHostCard();
         Player activator = sp.getActivatingPlayer();
@@ -251,6 +243,10 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         }
 
         if (sp.isManaAbility()) { // Mana Abilities go straight through
+            if (!sp.isCopied()) {
+                // Copied abilities aren't activated, so they shouldn't change these values
+                source.addAbilityActivated(sp);
+            }
             Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(source.getController());
             runParams.put(AbilityKey.Cost, sp.getPayCosts());
             runParams.put(AbilityKey.Activator, activator);
@@ -308,6 +304,17 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             return;
         }
 
+        if (sp.isActivatedAbility() && !sp.isCopied()) {
+            // if not already copied use a fresh instance
+            SpellAbility original = sp;
+            sp = sp.copy();
+            sp.setOriginalAbility(original);
+        }
+
+        if (sp.isAbility()) {
+            source.addAbilityActivated(sp);
+        }
+
         if (sp instanceof AbilityStatic || (sp.isTrigger() && sp.getTrigger().getOverridingAbility() instanceof AbilityStatic)) {
             AbilityUtils.resolve(sp);
             // AbilityStatic should do nothing below
@@ -322,6 +329,14 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
 
         // Copied spells aren't cast per se so triggers shouldn't run for them.
         Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(sp.getHostCard().getController());
+
+        if (sp.isSpell() && !sp.isCopied()) {
+            final Card lki = CardUtil.getLKICopy(sp.getHostCard());
+            runParams.put(AbilityKey.CardLKI, lki);
+            thisTurnCast.add(lki);
+            sp.getActivatingPlayer().addSpellCastThisTurn();
+        }
+
         runParams.put(AbilityKey.Cost, sp.getPayCosts());
         runParams.put(AbilityKey.Activator, sp.getActivatingPlayer());
         runParams.put(AbilityKey.CastSA, si.getSpellAbility(true));
@@ -463,10 +478,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
 
         GameActionUtil.checkStaticAfterPaying(sp.getHostCard());
 
-        if (sp.isSpell() && !sp.isCopied()) {
-            thisTurnCast.add(CardUtil.getLKICopy(sp.getHostCard()));
-            sp.getActivatingPlayer().addSpellCastThisTurn();
-        }
         if (sp.isActivatedAbility() && sp.isPwAbility()) {
             sp.getActivatingPlayer().setActivateLoyaltyAbilityThisTurn(true);
         }
@@ -617,11 +628,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
     }
 
     private final boolean hasFizzled(final SpellAbility sa, final Card source, final Boolean parentFizzled) {
-        // Check if the spellability is a trigger that was invalidated with fizzleTriggersOnStackTargeting
-        if (sa.getSVar("TriggerFizzled").equals("True")) {
-            return true;
-        }
-
         // Can't fizzle unless there are some targets
         Boolean fizzle = null;
         boolean rememberTgt = sa.getRootAbility().hasParam("RememberOriginalTargets");
@@ -700,8 +706,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
         frozenStack.remove(si);
         game.updateStackForView();
         SpellAbility sa = si.getSpellAbility(false);
-        sa.setLastStateBattlefield(CardCollection.EMPTY);
-        sa.setLastStateGraveyard(CardCollection.EMPTY);
         game.fireEvent(new GameEventSpellRemovedFromStack(sa));
     }
 
@@ -728,20 +732,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             } else {
                 if (activator.equals(p)) {
                     simultaneousStackEntryList.remove(sa);
-                }
-            }
-        }
-    }
-
-    public void fizzleTriggersOnStackTargeting(Card c, TriggerType t) {
-        for (SpellAbilityStackInstance si : stack) {
-            SpellAbility sa = si.getSpellAbility(false);
-            if (sa.getTriggeringObjects().containsKey(AbilityKey.Target) && sa.getTriggeringObjects().get(AbilityKey.Target).equals(c)) {
-                if (sa instanceof WrappedAbility) {
-                    WrappedAbility wi = (WrappedAbility)sa;
-                    if (wi.getTrigger().getMode() == t) {
-                        ((WrappedAbility)sa).getWrappedAbility().setSVar("TriggerFizzled", "True");
-                    }
                 }
             }
         }
