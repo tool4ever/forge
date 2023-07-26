@@ -65,7 +65,7 @@ public class ManifestEffect extends SpellAbilityEffect {
                 CardLists.shuffle(tgtCards);
             }
 
-            for (Card c : tgtCards) {
+            for (Card tgtC : tgtCards) {
                 // check if the object is still in game or if it was moved
                 Card gameCard = game.getCardState(tgtC, null);
                 // gameCard is LKI in that case, the card is not in game anymore

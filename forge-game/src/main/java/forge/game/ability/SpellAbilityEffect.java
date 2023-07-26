@@ -498,7 +498,7 @@ public abstract class SpellAbilityEffect {
         final Game game = hostCard.getGame();
         final Card eff = new Card(game.nextCardId(), game);
 
-        eff.setTimestamp(game.getNextTimestamp());
+        eff.setGameTimestamp(game.getNextTimestamp());
         eff.setName(name);
         eff.setColor(hostCard.getColor().getColor());
         // if name includes emblem then it should be one
