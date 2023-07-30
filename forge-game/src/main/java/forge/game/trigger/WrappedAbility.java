@@ -93,6 +93,8 @@ public class WrappedAbility extends Ability {
             ApiType.Unattach, // No Triggered
             ApiType.UnattachAll, // No Triggered
 
+            ApiType.Regenerate, // Updated
+            ApiType.RegenerateAll, // No Triggered
             ApiType.Regeneration, // Replacement Effect only
 
             ApiType.RemoveFromCombat, // Done

@@ -209,7 +209,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private boolean copiedSpell = false;
 
     private boolean unearthed;
-
+    private boolean ringbearer;
     private boolean monstrous;
 
     private boolean renowned;
@@ -225,7 +225,6 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private int timesCrewedThisTurn = 0;
 
     private int classLevel = 1;
-
     private long bestowTimestamp = -1;
     private long transformedTimestamp = 0;
     private long mutatedTimestamp = -1;
@@ -270,7 +269,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     private boolean hasBeenDealtExcessDamageThisTurn;
 
     // regeneration
-    private FCollection<Card> shields = new FCollection<>();
+    private int shieldCount = 0;
     private int regeneratedThisTurn;
 
     private int turnInZone;
@@ -3243,28 +3242,22 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     // shield = regeneration
-    public final Iterable<Card> getShields() {
-        return shields;
-    }
     public final int getShieldCount() {
-        return shields.size();
+        return shieldCount;
     }
 
-    public final void addShield(final Card shield) {
-        if (shields.add(shield)) {
-            view.updateShieldCount(this);
-        }
+    public final void incShieldCount() {
+        shieldCount++;
+        view.updateShieldCount(this);
     }
 
-    public final void subtractShield(final Card shield) {
-        if (shields.remove(shield)) {
-            view.updateShieldCount(this);
-        }
+    public final void decShieldCount() {
+        shieldCount--;
+        view.updateShieldCount(this);
     }
 
-    public final void resetShield() {
-        if (shields.isEmpty()) { return; }
-        shields.clear();
+    public final void resetShieldCount() {
+        shieldCount = 0;
         view.updateShieldCount(this);
     }
 
@@ -3280,7 +3273,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
 
     public final boolean canBeShielded() {
-        return !hasKeyword("CARDNAME can't be regenerated.");
+        return !StaticAbilityCantRegenerate.cantRegenerate(this);
     }
 
     // is this "Card" supposed to be a token?
@@ -4373,7 +4366,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     }
     public final void setIntensity(final int n) { intensity = n; }
     public final boolean hasIntensity() {
-            return intensity > 0;
+        return intensity > 0;
     }
 
     private int multiKickerMagnitude = 0;
@@ -6045,6 +6038,16 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
     public boolean wasDiscarded() { return discarded; }
     public void setDiscarded(boolean state) { discarded = state; }
 
+    public final boolean isRingBearer() {
+        return ringbearer;
+    }
+    public final void setRingBearer(final boolean ringbearer0) {
+        ringbearer = ringbearer0;
+        view.updateRingBearer(this);
+    }
+    public final void clearRingBearer() {
+        setRingBearer(false);
+    }
     public final boolean isMonstrous() {
         return monstrous;
     }
@@ -6600,7 +6603,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         setHasBeenDealtDeathtouchDamage(false);
         setHasBeenDealtExcessDamageThisTurn(false);
         setRegeneratedThisTurn(0);
-        resetShield();
+        resetShieldCount();
         setBecameTargetThisTurn(false);
         setFoughtThisTurn(false);
         clearMustBlockCards();
@@ -6812,12 +6815,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars {
         }
     }
 
-    // Optional costs paid
-    private final EnumSet<OptionalCost> costsPaid = EnumSet.noneOf(OptionalCost.class);
-    public void clearOptionalCostsPaid() { costsPaid.clear(); }
-    public void addOptionalCostPaid(OptionalCost cost) { costsPaid.add(cost); }
-    public Iterable<OptionalCost> getOptionalCostsPaid() { return costsPaid; }
-    public boolean isOptionalCostPaid(OptionalCost cost) { return costsPaid.contains(cost); }
+    public boolean isOptionalCostPaid(OptionalCost cost) { return getCastSA() == null ? false : getCastSA().isOptionalCostPaid(cost); }
 
     @Override
     public Game getGame() {

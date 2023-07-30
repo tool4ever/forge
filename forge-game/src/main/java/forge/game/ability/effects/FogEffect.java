@@ -38,7 +38,7 @@ public class FogEffect extends SpellAbilityEffect {
         game.getTriggerHandler().clearSuppression(TriggerType.ChangesZone);
 
         game.getEndOfTurn().addUntil(new GameCommand() {
-            private static final long serialVersionUID = 1L;
+            private static final long serialVersionUID = -3297629217432253089L;
 
             @Override
             public void run() {

@@ -1,26 +1,8 @@
 package forge.game.ability;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Map.Entry;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import com.google.common.collect.*;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
-
 import com.google.common.base.Functions;
 import com.google.common.base.Predicate;
-
+import com.google.common.collect.*;
 import forge.card.CardStateName;
 import forge.card.CardType;
 import forge.card.ColorSet;
@@ -29,21 +11,9 @@ import forge.card.mana.ManaAtom;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostParser;
 import forge.card.mana.ManaCostShard;
-import forge.game.CardTraitBase;
-import forge.game.Direction;
-import forge.game.Game;
-import forge.game.GameEntity;
-import forge.game.GameObject;
+import forge.game.*;
 import forge.game.ability.AbilityFactory.AbilityRecordType;
-import forge.game.card.Card;
-import forge.game.card.CardCollection;
-import forge.game.card.CardCollectionView;
-import forge.game.card.CardFactoryUtil;
-import forge.game.card.CardLists;
-import forge.game.card.CardPredicates;
-import forge.game.card.CardState;
-import forge.game.card.CardUtil;
-import forge.game.card.CounterType;
+import forge.game.card.*;
 import forge.game.cost.Cost;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
@@ -54,15 +24,7 @@ import forge.game.phase.PhaseHandler;
 import forge.game.player.Player;
 import forge.game.player.PlayerCollection;
 import forge.game.player.PlayerPredicates;
-import forge.game.spellability.AbilitySub;
-import forge.game.spellability.LandAbility;
-import forge.game.spellability.OptionalCost;
-import forge.game.spellability.Spell;
-import forge.game.spellability.SpellAbility;
-import forge.game.spellability.SpellAbilityRestriction;
-import forge.game.spellability.SpellAbilityStackInstance;
-import forge.game.spellability.SpellPermanent;
-import forge.game.spellability.TargetChoices;
+import forge.game.spellability.*;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.ZoneType;
@@ -74,6 +36,14 @@ import forge.util.collect.FCollection;
 import forge.util.collect.FCollectionView;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 public class AbilityUtils {
@@ -1353,16 +1323,16 @@ public class AbilityUtils {
             if (o instanceof SpellAbility) {
                 s = (SpellAbility) o;
             } else if (o instanceof SpellAbilityStackInstance) {
-                s = ((SpellAbilityStackInstance) o).getSpellAbility(true);
+                s = ((SpellAbilityStackInstance) o).getSpellAbility();
             }
         }
         else if (defined.endsWith("Targeted") && sa instanceof SpellAbility) {
             final List<TargetChoices> targets = defined.startsWith("This") ? Arrays.asList(((SpellAbility)sa).getTargets()) : ((SpellAbility)sa).getAllTargetChoices();
             for (TargetChoices tc : targets) {
                 for (SpellAbility targetSpell : tc.getTargetSpells()) {
-                    SpellAbilityStackInstance stackInstance = game.getStack().getInstanceFromSpellAbility(targetSpell);
+                    SpellAbilityStackInstance stackInstance = game.getStack().getInstanceMatchingSpellAbilityID(targetSpell);
                     if (stackInstance != null) {
-                        SpellAbility instanceSA = stackInstance.getSpellAbility(true);
+                        SpellAbility instanceSA = stackInstance.getSpellAbility();
                         if (instanceSA != null) {
                             sas.add(instanceSA);
                         }
@@ -1745,12 +1715,12 @@ public class AbilityUtils {
                                 && ZoneType.Battlefield.name().equals(t.getParam("Destination"))) {
                            return doXMath(c.getXManaCostPaid(), expr, c, ctb);
                         } else if (TriggerType.SpellCast.equals(t.getMode())) {
-                            // Cast Trigger like Hydroid Krasis, use SI because Unbound Flourishing might change X
+                            // Cast Trigger like Hydroid Krasis
                             SpellAbilityStackInstance castSI = (SpellAbilityStackInstance) root.getTriggeringObject(AbilityKey.StackInstance);
                             if (castSI == null) {
                                 return doXMath(0, expr, c, ctb);
                             }
-                            return doXMath(castSI.getXManaPaid(), expr, c, ctb);
+                            return doXMath(castSI.getSpellAbility().getXManaCostPaid(), expr, c, ctb);
                         } else if (TriggerType.Cycled.equals(t.getMode())) {
                             SpellAbility cycleSA = (SpellAbility) sa.getTriggeringObject(AbilityKey.Cause);
                             if (cycleSA == null || cycleSA.getXManaCostPaid() == null) {
@@ -1826,7 +1796,17 @@ public class AbilityUtils {
                     }
                     return count;
                 }
-
+                // Count$ManaProduced
+                if (sq[0].startsWith("AmountManaProduced")) {
+                    final SpellAbility root = sa.getRootAbility();
+                    int amount = 0;
+                    if (root != null) {
+                        for (AbilityManaPart amp : root.getAllManaParts()) {
+                            amount = amount + amp.getLastManaProduced().size();
+                        }
+                    }
+                    return doXMath(amount, expr, c, ctb);
+                }
                 // Count$ManaColorsPaid
                 if (sq[0].equals("ManaColorsPaid")) {
                     final SpellAbility root = sa.getRootAbility();
@@ -3500,6 +3480,10 @@ public class AbilityUtils {
 
         if (value.equals("DungeonsCompleted")) {
             return doXMath(player.getCompletedDungeons().size(), m, source, ctb);
+        }
+
+        if (value.equals("RingTemptedYou")) {
+            return doXMath(player.getNumRingTemptedYou(), m, source, ctb);
         }
         if (value.startsWith("DungeonCompletedNamed")) {
             String [] full = value.split("_");
