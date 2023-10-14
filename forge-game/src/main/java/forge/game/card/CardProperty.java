@@ -1190,7 +1190,6 @@ public class CardProperty {
         } else if (property.startsWith("Damaged")) {
             boolean found = false;
             for (Pair<Integer, Boolean> p : source.getDamageReceivedThisTurn()) {
-                boolean found = false;
                 if (game.getDamageLKI(p).getLeft().equalsWithGameTimestamp(card)) {
                     found = true;
                     break;

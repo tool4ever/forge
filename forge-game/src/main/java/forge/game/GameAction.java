@@ -1523,7 +1523,7 @@ public class GameAction {
                 continue;
             }
             // sort by game timestamp
-            rolesByPlayer.sort(CardPredicates.compareByTimestamp());
+            rolesByPlayer.sort(CardPredicates.compareByGameTimestamp());
             removeList.addAll(rolesByPlayer.subList(0, rolesByPlayer.size() - 1));
             checkAgain = true;
         }

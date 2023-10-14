@@ -175,7 +175,7 @@ public class SimulationTest {
     protected Card addToken(String name, Player p) {
         Card c = createToken(name, p);
         // card need a new Timestamp otherwise Static Abilities might collide
-        c.setTimestamp(p.getGame().getNextTimestamp());
+        c.setGameTimestamp(p.getGame().getNextTimestamp());
         p.getZone(ZoneType.Battlefield).add(c);
         return c;
     }
