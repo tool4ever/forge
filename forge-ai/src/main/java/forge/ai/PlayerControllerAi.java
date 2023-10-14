@@ -594,15 +594,6 @@ public class PlayerControllerAi extends PlayerController {
     }
 
     @Override
-    public CardCollectionView getCardsToMulligan(Player firstPlayer)  {
-        if (!ComputerUtil.wantMulligan(player, 0)) {
-            return null;
-        }
-
-        return player.getCardsIn(ZoneType.Hand);
-    }
-
-    @Override
     public CardCollectionView londonMulliganReturnCards(final Player mulliganingPlayer, int cardsToReturn) {
         // TODO This is better than it was before, but still suboptimal (but fast).
         // Maybe score a bunch of hands based on projected hand size and return the "duds"
@@ -1062,6 +1053,7 @@ public class PlayerControllerAi extends PlayerController {
         emptyAbility.setSVars(sa.getSVars());
         emptyAbility.setCardState(sa.getCardState());
         emptyAbility.setXManaCostPaid(sa.getRootAbility().getXManaCostPaid());
+
         if (ComputerUtilCost.willPayUnlessCost(sa, player, cost, alreadyPaid, allPayers)) {
             boolean result = ComputerUtil.playNoStack(player, emptyAbility, getGame(), true); // AI needs something to resolve to pay that cost
             if (!emptyAbility.getPaidHash().isEmpty()) {
@@ -1299,6 +1291,8 @@ public class PlayerControllerAi extends PlayerController {
                 name = ComputerUtilCard.getMostProminentCardName(cards);
             } else if (logic.equals("CursedScroll")) {
                 name = SpecialCardAi.CursedScroll.chooseCard(player, sa);
+            } else if (logic.equals("PithingNeedle")) {
+                name = SpecialCardAi.PithingNeedle.chooseCard(player, sa);
             }
 
             if (!StringUtils.isBlank(name)) {

@@ -73,7 +73,7 @@ public class TapOrUntapAllEffect extends SpellAbilityEffect {
                 continue;
             }
             if (toTap) {
-                gameCard.tap(true);
+                gameCard.tap(true, sa, activator);
             } else {
                 gameCard.untap(true);
             }

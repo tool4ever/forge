@@ -434,7 +434,10 @@ public class PhaseHandler implements java.io.Serializable {
                     givePriorityToPlayer = false;
 
                     // Rule 514.3a - state-based actions
-                    game.getAction().checkStateEffects(true);
+                    if (game.getAction().checkStateEffects(true)) {
+                        bRepeatCleanup = true;
+                        givePriorityToPlayer = true;
+                    }
                     break;
 
                 default:
@@ -609,7 +612,7 @@ public class PhaseHandler implements java.io.Serializable {
             for (final Card attacker : combat.getAttackers()) {
                 if (!attacker.attackVigilance()) {
                     attacker.setTapped(false);
-                    attacker.tap(true, true);
+                    attacker.tap(true, true, null, null);
                 }
             }
         }
@@ -1134,10 +1137,7 @@ public class PhaseHandler implements java.io.Serializable {
 
             // update Priority for all players
             for (final Player p : game.getPlayers()) {
-                if (getPriorityPlayer() == p)
-                    p.setHasPriority(true);
-                else
-                    p.setHasPriority(false);
+                p.setHasPriority(getPriorityPlayer() == p);
             }
         }
     }

@@ -240,6 +240,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
                     || (this.getZone() != null && !this.getZone().equals(ZoneType.Hand))) {
                 return false;
             }
+            // Prevent AI from casting spells with "May be played" from the Stack
             if (cardZone != null && cardZone.is(ZoneType.Stack)) {
                 return false;
             }
@@ -482,7 +483,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
         }
 
         // 702.36e
-        // If the permanent wouldn’t have a morph cost if it were face up, it can’t be turned face up this way.
+        // If the permanent wouldn't have a morph cost if it were face up, it can't be turned face up this way.
         if (sa.isMorphUp() && c.isInPlay()) {
             Card cp = c;
             if (!c.isLKI()) {
@@ -583,7 +584,7 @@ public class SpellAbilityRestriction extends SpellAbilityVariables {
         }
 
         // Special check for Lion's Eye Diamond
-        if (sa.isManaAbility() && c.getGame().getStack().isFrozen() && isInstantSpeed()) {
+        if (sa.isManaAbility() && c.getGame().costPaymentStack.peek() != null && isInstantSpeed()) {
             return false;
         }
 

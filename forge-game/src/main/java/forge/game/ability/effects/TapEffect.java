@@ -20,6 +20,7 @@ public class TapEffect extends SpellAbilityEffect {
      */
     @Override
     public void resolve(SpellAbility sa) {
+        final Player activator = sa.getActivatingPlayer();
         final Card card = sa.getHostCard();
         final Game game = card.getGame();
         final boolean remTapped = sa.hasParam("RememberTapped");
@@ -31,7 +32,6 @@ public class TapEffect extends SpellAbilityEffect {
         Iterable<Card> toTap;
 
         if (sa.hasParam("CardChoices")) { // choosing outside Defined/Targeted
-            final Player activator = sa.getActivatingPlayer();
             CardCollection choices = CardLists.getValidCards(card.getGame().getCardsIn(ZoneType.Battlefield), sa.getParam("CardChoices"), activator, card, sa);
             int n = sa.hasParam("ChoiceAmount") ?
                     AbilityUtils.calculateAmount(card, sa.getParam("ChoiceAmount"), sa) : 1;
@@ -43,11 +43,15 @@ public class TapEffect extends SpellAbilityEffect {
             toTap = getTargetCards(sa);
         }
 
+        Player tapper = activator;
+        if (sa.hasParam("Tapper")) {
+            tapper = AbilityUtils.getDefinedPlayers(card, sa.getParam("Tapper"), sa).getFirst();
+        }
+
         for (final Card tgtC : toTap) {
             if (tgtC.isPhasedOut()) {
                 continue;
             }
-
             if (!tgtC.isInPlay()) {
                 continue;
             }
@@ -62,7 +66,7 @@ public class TapEffect extends SpellAbilityEffect {
             if (gameCard.isUntapped() && remTapped || alwaysRem) {
                 card.addRemembered(gameCard);
             }
-            gameCard.tap(true);
+            gameCard.tap(true, sa, tapper);
             if (sa.hasParam("ETB")) {
                 // do not fire Taps triggers
                 tgtC.setTapped(true);

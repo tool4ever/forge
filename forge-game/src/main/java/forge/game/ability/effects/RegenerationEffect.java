@@ -1,6 +1,7 @@
 package forge.game.ability.effects;
 
 import forge.game.Game;
+import forge.game.ability.AbilityKey;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
 import forge.game.event.GameEventCardRegenerated;
@@ -28,9 +29,11 @@ public class RegenerationEffect extends SpellAbilityEffect {
                 continue;
             }
 
+            SpellAbility cause = (SpellAbility)sa.getReplacingObject(AbilityKey.Cause);
+
             gameCard.setDamage(0);
             gameCard.setHasBeenDealtDeathtouchDamage(false);
-            gameCard.tap(true);
+            gameCard.tap(true, cause, c.getController());
             gameCard.addRegeneratedThisTurn();
 
             if (game.getCombat() != null) {

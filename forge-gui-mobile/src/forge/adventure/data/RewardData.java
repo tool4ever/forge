@@ -10,7 +10,6 @@ import forge.adventure.util.Reward;
 import forge.adventure.world.WorldSave;
 import forge.deck.Deck;
 import forge.item.PaperCard;
-import forge.model.FModel;
 
 import java.io.Serializable;
 import java.util.*;
@@ -23,6 +22,7 @@ import java.util.*;
  * Also used for deck generation and shops
  */
 public class RewardData implements Serializable {
+    private static final long serialVersionUID = 3158932532013393718L;
     public String type;
     public float probability;
     public int count;
@@ -83,10 +83,11 @@ public class RewardData implements Serializable {
 
     static private void initializeAllCards(){
         RewardData legals = Config.instance().getConfigData().legalCards;
+
         if(legals==null)
-            allCards = FModel.getMagicDb().getCommonCards().getUniqueCardsNoAlt();
+            allCards = CardUtil.getFullCardPool();
         else
-            allCards = Iterables.filter(FModel.getMagicDb().getCommonCards().getUniqueCardsNoAlt(),  new CardUtil.CardPredicate(legals, true));
+            allCards = Iterables.filter(CardUtil.getFullCardPool(), new CardUtil.CardPredicate(legals, true));
         //Filter out specific cards.
         allCards = Iterables.filter(allCards, input -> {
             if(input == null)
@@ -127,6 +128,7 @@ public class RewardData implements Serializable {
 
     public Array<Reward> generate(boolean isForEnemy, Iterable<PaperCard> cards, boolean useSeedlessRandom, boolean isNoSell) {
 
+        boolean allCardVariants = Config.instance().getSettingData().useAllCardVariants;
         Random rewardRandom = useSeedlessRandom?new Random():WorldSave.getCurrentSave().getWorld().getRandom();
         //Keep using same generation method for shop rewards, but fully randomize loot drops by not using the instance pre-seeded by the map
 
@@ -144,7 +146,14 @@ public class RewardData implements Serializable {
                 case "Union":
                     HashSet<PaperCard> pool = new HashSet<>();
                     for (RewardData r : cardUnion) {
-                        pool.addAll(CardUtil.getPredicateResult(allCards, r));
+                        if( r.cardName != null && !r.cardName.isEmpty() ) {
+                            PaperCard pc = allCardVariants ? CardUtil.getCardByName(r.cardName)
+                                    : StaticData.instance().getCommonCards().getCard(r.cardName);
+                            if (pc != null)
+                                pool.add(pc);
+                        } else {
+                            pool.addAll(CardUtil.getPredicateResult(allCards, r));
+                        }
                     }
                     ArrayList<PaperCard> finalPool = new ArrayList(pool);
 
@@ -157,8 +166,15 @@ public class RewardData implements Serializable {
                 case "card":
                 case "randomCard":
                     if( cardName != null && !cardName.isEmpty() ) {
-                        for(int i = 0; i < count + addedCount; i++) {
-                            ret.add(new Reward(StaticData.instance().getCommonCards().getCard(cardName), isNoSell));
+                        if (allCardVariants) {
+                            PaperCard card = CardUtil.getCardByName(cardName);
+                            for (int i = 0; i < count + addedCount; i++) {
+                                ret.add(new Reward(CardUtil.getCardByNameAndEdition(cardName, card.getEdition()), isNoSell));
+                            }
+                        } else {
+                            for (int i = 0; i < count + addedCount; i++) {
+                                ret.add(new Reward(StaticData.instance().getCommonCards().getCard(cardName), isNoSell));
+                            }
                         }
                     } else {
                         for(PaperCard card:CardUtil.generateCards(isForEnemy ? allEnemyCards:allCards,this, count+addedCount, rewardRandom)) {
@@ -220,8 +236,27 @@ public class RewardData implements Serializable {
     }
     static public List<PaperCard> rewardsToCards(Iterable<Reward> dataList) {
         ArrayList<PaperCard> ret=new ArrayList<PaperCard>();
-        for (Reward data:dataList) {
-            ret.add(data.getCard());
+
+        boolean allCardVariants = Config.instance().getSettingData().useAllCardVariants;
+
+        if (allCardVariants) {
+            String basicLandEdition = "";
+            for (Reward data : dataList) {
+                PaperCard card = data.getCard();
+                if (card.isVeryBasicLand()) {
+                    // ensure that all basid lands share the same edition so the deck doesn't look odd
+                    if (basicLandEdition.isEmpty()) {
+                        basicLandEdition = card.getEdition();
+                    }
+                    ret.add(CardUtil.getCardByNameAndEdition(card.getName(), basicLandEdition));
+                } else {
+                    ret.add(card);
+                }
+            }
+        } else {
+            for (Reward data : dataList) {
+                ret.add(data.getCard());
+            }
         }
         return ret;
     }

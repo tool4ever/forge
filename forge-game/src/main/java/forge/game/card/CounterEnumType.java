@@ -122,6 +122,8 @@ public enum CounterEnumType {
     EON("EON", 23, 194, 255),
 
     EMBER("EMBER", 247, 52, 43),
+    
+    EXPOSURE("EXPOSURE", 50, 180, 30),
 
     EYEBALL("EYE", 184, 202, 201),
 
@@ -332,6 +334,8 @@ public enum CounterEnumType {
     SHRED("SHRED", 255, 165, 152),
 
     SILVER("SILVER", 192, 192, 192),
+    
+    SKEWER("SKEWER", 202, 192, 156),
 
     SLEEP("SLEEP", 178, 192, 255),
 

@@ -58,7 +58,7 @@ public final class CardUtil {
     public static final ImmutableList<String> modifiableKeywords = ImmutableList.<String>builder().add(
             "Enchant", "Protection", "Cumulative upkeep", "Equip", "Buyback",
             "Cycling", "Echo", "Kicker", "Flashback", "Madness", "Morph",
-            "Affinity", "Entwine", "Splice", "Ninjutsu", "Presence",
+            "Affinity", "Entwine", "Splice", "Ninjutsu",
             "Transmute", "Replicate", "Recover", "Squad", "Suspend", "Aura swap",
             "Fortify", "Transfigure", "Champion", "Evoke", "Prowl",
             "Reinforce", "Unearth", "Level up", "Miracle", "Overload", "Cleave",
@@ -229,7 +229,7 @@ public final class CardUtil {
         if (in.isTransformed()) {
             newCopy.incrementTransformedTimestamp();
         }
-        newCopy.setState(newCopy.getFaceupCardStateName(), false, true);
+        newCopy.setState(in.getCurrentStateName(), false, true);
         if (in.isFaceDown()) {
             newCopy.turnFaceDownNoUpdate();
             newCopy.setType(new CardType(in.getFaceDownState().getType()));
@@ -296,8 +296,7 @@ public final class CardUtil {
 
         newCopy.setChosenType(in.getChosenType());
         newCopy.setChosenType2(in.getChosenType2());
-        newCopy.setChosenName(in.getChosenName());
-        newCopy.setChosenName2(in.getChosenName2());
+        newCopy.setNamedCards(in.getNamedCards());
         newCopy.setChosenColors(Lists.newArrayList(in.getChosenColors()));
         if (in.hasChosenNumber()) {
             newCopy.setChosenNumber(in.getChosenNumber());
@@ -328,7 +327,7 @@ public final class CardUtil {
 
         newCopy.setForetold(in.isForetold());
         newCopy.setForetoldThisTurn(in.isForetoldThisTurn());
-        newCopy.setForetoldByEffect(in.isForetoldByEffect());
+        newCopy.setForetoldCostByEffect(in.isForetoldCostByEffect());
 
         newCopy.setMeldedWith(getLKICopy(in.getMeldedWith(), cachedMap));
 

@@ -291,11 +291,6 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             return;
         }
 
-        if (sp.getApi() == ApiType.Charm && sp.hasParam("ChoiceRestriction")) {
-            // Remember the Choice here for later handling
-            source.addChosenModes(sp, sp.getSubAbility().getDescription(), game.getPhaseHandler().inCombat());
-        }
-
         //cancel auto-pass for all opponents of activating player
         //when a new non-triggered ability is put on the stack
         if (!sp.isTrigger()) {
@@ -308,7 +303,14 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             // if not already copied use a fresh instance
             SpellAbility original = sp;
             sp = sp.copy();
+            // need to reapply text changes
+            sp.changeText();
             sp.setOriginalAbility(original);
+            original.setXManaCostPaid(null);
+            if (original.getApi() == ApiType.Charm) {
+                // reset chain
+                original.setSubAbility(null);
+            }
         }
 
         if (frozen && !sp.hasParam("IgnoreFreeze")) {
@@ -317,7 +319,7 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
             return;
         }
 
-        if (sp.isAbility()) {
+        if (sp.isAbility() && !sp.isCopied()) {
             source.addAbilityActivated(sp);
         }
 

@@ -284,6 +284,13 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                     break;
                 }
             }
+            for (SpellAbility sa : hostCard.getAllSpellAbilities()) {
+                if (sa.hasParam("Activator")
+                        && player.isValid(sa.getParam("Activator"), hostCard.getController(), hostCard, sa)) {
+                    noPermission = false;
+                    break;
+                }
+            }
             if (noPermission) {
                 return null;
             }
@@ -1425,11 +1432,11 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                                             GameEntity affected, final String question) {
         if (GuiBase.getInterface().isLibgdxPort()) {
             CardView cardView;
-            SpellAbilityView spellAbilityView = effectSA.getView();
+            SpellAbilityView spellAbilityView = effectSA == null ? null : effectSA.getView();
             if (spellAbilityView != null) //updated view
                 cardView = spellAbilityView.getHostCard();
             else //fallback
-                cardView = effectSA.getCardView();
+                cardView = effectSA == null ? null : effectSA.getCardView();
             return this.getGui().confirm(cardView, question.replaceAll("\n", " "));
         } else {
             final InputConfirm inp = new InputConfirm(this, question, effectSA);
@@ -1451,14 +1458,6 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
         final InputLondonMulligan inp = new InputLondonMulligan(this, player, cardsToReturn);
         inp.showAndWait();
         return inp.getSelectedCards();
-    }
-
-    @Override
-    public CardCollectionView getCardsToMulligan(final Player firstPlayer) {
-        // Partial Paris is gone, so it being commander doesn't really matter anymore...
-        final InputConfirmMulligan inp = new InputConfirmMulligan(this, player, firstPlayer);
-        inp.showAndWait();
-        return inp.isKeepHand() ? null : player.getCardsIn(ZoneType.Hand);
     }
 
     @Override
@@ -2614,7 +2613,7 @@ public class PlayerControllerHuman extends PlayerController implements IGameCont
                 inp.showAndWait();
                 if (!inp.hasCancelled()) {
                     for (final Card c : inp.getSelected()) {
-                        c.tap(true);
+                        c.tap(true, null, null);
                     }
                 }
             });

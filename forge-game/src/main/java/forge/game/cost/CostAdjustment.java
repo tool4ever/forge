@@ -249,7 +249,7 @@ public class CostAdjustment {
                         cardsToDelveOut.add(c);
                     } else if (!test) {
                         sa.getHostCard().addDelved(c);
-                        final Card d = game.getAction().exile(c, null);
+                        final Card d = game.getAction().exile(c, null, null);
                         final Card host = sa.getHostCard();
                         host.addExiledCard(d);
                         d.setExiledWith(host);
@@ -293,10 +293,7 @@ public class CostAdjustment {
             sa.addTappedForConvoke(conv.getKey());
             cost.decreaseShard(conv.getValue(), 1);
             if (!test) {
-                conv.getKey().tap(true);
-                if (!improvise) {
-                    sa.getHostCard().addConvoked(conv.getKey());
-                }
+                conv.getKey().tap(true, sa, sa.getActivatingPlayer());
             }
         }
     }
@@ -411,7 +408,7 @@ public class CostAdjustment {
                 minMana = Integer.valueOf(staticAbility.getParam("MinMana"));
             }
 
-            final int maxReduction = Math.max(0, manaCost.getConvertedManaCost() - minMana - sumReduced);
+            final int maxReduction = manaCost.getConvertedManaCost() - minMana - sumReduced;
             if (maxReduction > 0) {
                 return Math.min(value, maxReduction);
             }
