@@ -238,18 +238,18 @@ public class StaticAbility extends CardTraitBase implements IIdentifiable, Clone
         this.setCardState(state);
     }
 
-    public final CardCollectionView applyContinuousAbilityBefore(final StaticAbilityLayer layer, final CardCollectionView preList) {
+    public final CardCollectionView applyContinuousAbilityBefore(final StaticAbilityLayer layer, final CardCollectionView preList, final boolean objects) {
         if (!shouldApplyContinuousAbility(layer, false)) {
             return null;
         }
-        return StaticAbilityContinuous.applyContinuousAbility(this, layer, preList);
+        return StaticAbilityContinuous.applyContinuousAbility(this, layer, preList, objects);
     }
 
     public final CardCollectionView applyContinuousAbility(final StaticAbilityLayer layer, final CardCollectionView affected) {
         if (!shouldApplyContinuousAbility(layer, true)) {
             return null;
         }
-        return StaticAbilityContinuous.applyContinuousAbility(this, affected, layer);
+        return StaticAbilityContinuous.applyContinuousAbility(this, affected, layer, true);
     }
 
     /**

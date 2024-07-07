@@ -538,7 +538,7 @@ public class AnimateAi extends SpellAbilityAi {
             for (StaticAbility stAb : traits.getStaticAbilities()) {
                 if ("Continuous".equals(stAb.getParam("Mode"))) {
                     for (final StaticAbilityLayer layer : stAb.getLayers()) {
-                        StaticAbilityContinuous.applyContinuousAbility(stAb, new CardCollection(card), layer);
+                        StaticAbilityContinuous.applyContinuousAbility(stAb, new CardCollection(card), layer, true);
                     }
                 }
             }

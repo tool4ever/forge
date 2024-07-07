@@ -1083,36 +1083,8 @@ public class GameAction {
         }
 
         // search for cards with static abilities
-        final FCollection<StaticAbility> staticAbilities = new FCollection<>();
         final CardCollection staticList = new CardCollection();
-
-        game.forEachCardInGame(new Visitor<Card>() {
-            @Override
-            public boolean visit(final Card c) {
-                // need to get Card from preList if able
-                final Card co = preList.get(c);
-                for (StaticAbility stAb : co.getStaticAbilities()) {
-                    if (stAb.checkMode("Continuous")) {
-                        staticAbilities.add(stAb);
-                    }
-                 }
-                 if (!co.getStaticCommandList().isEmpty()) {
-                     staticList.add(co);
-                 }
-                 return true;
-            }
-        }, true);
-
-        final Comparator<StaticAbility> comp = new Comparator<StaticAbility>() {
-            @Override
-            public int compare(final StaticAbility a, final StaticAbility b) {
-                return ComparisonChain.start()
-                        .compareTrueFirst(a.hasParam("CharacteristicDefining"), b.hasParam("CharacteristicDefining"))
-                        .compare(a.getHostCard().getLayerTimestamp(), b.getHostCard().getLayerTimestamp())
-                        .result();
-            }
-        };
-        Collections.sort(staticAbilities, comp);
+        FCollection<StaticAbility> staticAbilities = getStaticAbilities(preList, staticList);
 
         final Map<StaticAbility, CardCollectionView> affectedPerAbility = Maps.newHashMap();
         for (final StaticAbilityLayer layer : StaticAbilityLayer.CONTINUOUS_LAYERS) {
@@ -1121,7 +1093,7 @@ public class GameAction {
                 final CardCollectionView previouslyAffected = affectedPerAbility.get(stAb);
                 final CardCollectionView affectedHere;
                 if (previouslyAffected == null) {
-                    affectedHere = stAb.applyContinuousAbilityBefore(layer, preList);
+                    affectedHere = stAb.applyContinuousAbilityBefore(layer, preList, true);
                     if (affectedHere != null) {
                         affectedPerAbility.put(stAb, affectedHere);
                     }
@@ -1134,7 +1106,7 @@ public class GameAction {
                         for (final StaticAbility st2 : c.getStaticAbilities()) {
                             if (!staticAbilities.contains(st2)) {
                                 toAdd.add(st2);
-                                st2.applyContinuousAbilityBefore(layer, preList);
+                                st2.applyContinuousAbilityBefore(layer, preList, true);
                             }
                         }
                     }
@@ -1146,6 +1118,14 @@ public class GameAction {
         for (final CardCollectionView affected : affectedPerAbility.values()) {
             if (affected != null) {
                 Iterables.addAll(affectedCards, affected);
+            }
+        }
+
+        // CR 613.10 players after objects
+        staticAbilities = getStaticAbilities(preList, null);
+        for (final StaticAbilityLayer layer : StaticAbilityLayer.CONTINUOUS_LAYERS) {
+            for (final StaticAbility stAb : staticAbilities) {
+                stAb.applyContinuousAbilityBefore(layer, preList, false);
             }
         }
 
@@ -1209,6 +1189,38 @@ public class GameAction {
             game.fireEvent(new GameEventCardStatsChanged(affectedCards));
         }
         game.getTracker().unfreeze();
+    }
+
+    public FCollection<StaticAbility> getStaticAbilities(CardCollectionView preList, CardCollection staticList) {
+        final FCollection<StaticAbility> staticAbilities = new FCollection<>();
+        game.forEachCardInGame(new Visitor<Card>() {
+            @Override
+            public boolean visit(final Card c) {
+                // need to get Card from preList if able
+                final Card co = preList.get(c);
+                for (StaticAbility stAb : co.getStaticAbilities()) {
+                    if (stAb.checkMode("Continuous")) {
+                        staticAbilities.add(stAb);
+                    }
+                 }
+                 if (staticList != null && !co.getStaticCommandList().isEmpty()) {
+                     staticList.add(co);
+                 }
+                 return true;
+            }
+        }, true);
+
+        final Comparator<StaticAbility> comp = new Comparator<StaticAbility>() {
+            @Override
+            public int compare(final StaticAbility a, final StaticAbility b) {
+                return ComparisonChain.start()
+                        .compareTrueFirst(a.hasParam("CharacteristicDefining"), b.hasParam("CharacteristicDefining"))
+                        .compare(a.getHostCard().getLayerTimestamp(), b.getHostCard().getLayerTimestamp())
+                        .result();
+            }
+        };
+        Collections.sort(staticAbilities, comp);
+        return staticAbilities;
     }
 
     public final boolean checkStateEffects(final boolean runEvents) {

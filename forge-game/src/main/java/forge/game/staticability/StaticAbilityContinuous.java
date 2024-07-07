@@ -68,9 +68,9 @@ public final class StaticAbilityContinuous {
      * @see #applyContinuousAbility(StaticAbility, CardCollectionView,
      *      StaticAbilityLayer)
      */
-	public static CardCollectionView applyContinuousAbility(final StaticAbility stAb, final StaticAbilityLayer layer, final CardCollectionView preList) {
-        final CardCollectionView affectedCards = getAffectedCards(stAb, preList);
-        return applyContinuousAbility(stAb, affectedCards, layer);
+	public static CardCollectionView applyContinuousAbility(final StaticAbility stAb, final StaticAbilityLayer layer, final CardCollectionView preList, final boolean objects) {
+        final CardCollectionView affectedCards = objects ? getAffectedCards(stAb, preList) : CardCollection.EMPTY;
+        return applyContinuousAbility(stAb, affectedCards, layer, objects);
     }
 
     /**
@@ -86,18 +86,21 @@ public final class StaticAbilityContinuous {
      * @return a {@link CardCollectionView} of cards that have been affected,
      *         identical to {@code affectedCards}.
      */
-    public static CardCollectionView applyContinuousAbility(final StaticAbility stAb, final CardCollectionView affectedCards, final StaticAbilityLayer layer) {
+    public static CardCollectionView applyContinuousAbility(final StaticAbility stAb, final CardCollectionView affectedCards, final StaticAbilityLayer layer, final boolean objects) {
         final Map<String, String> params = stAb.getMapParams();
         final Card hostCard = stAb.getHostCard();
         final Player controller = hostCard.getController();
-
-        final List<Player> affectedPlayers = StaticAbilityContinuous.getAffectedPlayers(stAb);
         final Game game = hostCard.getGame();
+
+        final List<Player> affectedPlayers = objects ? PlayerCollection.getEmpty() : StaticAbilityContinuous.getAffectedPlayers(stAb);
 
         final StaticEffects effects = game.getStaticEffects();
         final StaticEffect se = effects.getStaticEffect(stAb);
-        se.setAffectedCards(affectedCards);
-        se.setAffectedPlayers(affectedPlayers);
+        if (objects) {
+            se.setAffectedCards(affectedCards);
+        } else {
+            se.setAffectedPlayers(affectedPlayers);
+        }
         se.setParams(params);
         se.setTimestamp(hostCard.getLayerTimestamp());
 
