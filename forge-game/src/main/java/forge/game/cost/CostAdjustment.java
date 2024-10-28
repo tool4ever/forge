@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import forge.card.CardStateName;
 import forge.card.mana.ManaAtom;
@@ -29,6 +30,7 @@ import forge.game.card.CardUtil;
 import forge.game.card.CardZoneTable;
 import forge.game.keyword.Keyword;
 import forge.game.keyword.KeywordInterface;
+import forge.game.keyword.KeywordWithCost;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
@@ -177,6 +179,10 @@ public class CostAdjustment {
         if (count > 0) {
             Cost part = new Cost(scost, sa.isAbility(), sa.getHostCard().equals(hostCard));
             cost.mergeTo(part, count, sa);
+            if (st.hasParam("KeywordOnly")) {
+                // store raise on keyword cost in case it needs to be reduced again later
+                cost.getRaisedKeywordCosts().put(st.getParam("KeywordOnly"), cost.getRaisedKeywordCosts().getOrDefault(st.getParam("KeywordOnly"), 0));
+            }
         }
     }
 
@@ -220,8 +226,14 @@ public class CostAdjustment {
             }
         }
 
-        // Reduce cost
+        final List<StaticAbility> reduceAbilitiesForKeyword = Lists.newArrayList(reduceAbilities);
+        reduceAbilities.removeIf(st -> st.hasParam("KeywordOnly"));
+        reduceAbilitiesForKeyword.removeAll(reduceAbilities);
+
         int sumGeneric = 0;
+
+        sumGeneric += handleReduceOnKeywordCosts(cost, sa, reduceAbilitiesForKeyword);
+
         if (sa.hasParam("ReduceCost")) {
             String cst = sa.getParam("ReduceCost");
             String amt = sa.getParamOrDefault("ReduceAmount", cst);
@@ -307,6 +319,60 @@ public class CostAdjustment {
 
         return true;
     }
+
+    private static int handleReduceOnKeywordCosts(ManaCostBeingPaid cost, SpellAbility sa, List<StaticAbility> reduceAbilitiesForKeyword) {
+        if (reduceAbilitiesForKeyword.isEmpty()) {
+            return 0;
+        }
+        int reduced = 0;
+
+        Map<String, List<StaticAbility>> reducerMap = Maps.newHashMap();
+        // need to group by KW
+        for (StaticAbility reduce : reduceAbilitiesForKeyword) {
+            String kw = reduce.getParam("KeywordOnly");
+            reducerMap.computeIfAbsent(kw, r -> Lists.newArrayList()).add(reduce);
+        }
+        for (Entry<String, List<StaticAbility>> e : reducerMap.entrySet()) {
+            String kw = e.getKey();
+            KeywordInterface costHolder = null;
+            // need to find the keyword cost, check alternative then optional
+            if (sa.getKeyword() instanceof KeywordWithCost && sa.getKeyword().getKeyword().toString().equals(kw)) {
+                costHolder = sa.getKeyword();
+            } else {
+                for (KeywordInterface k: sa.getHostCard().getKeywords()) {
+                    if (k.getKeyword().toString().equals(kw)) {
+                        costHolder = k;
+                        break;
+                    }
+                }
+            }
+            if (costHolder != null) {
+                ManaCost costForKw;
+                CostPartMana manaPart = ((KeywordWithCost) costHolder).getCost().getCostMana();
+                if (manaPart == null) {
+                    // some like flashback don't spell it out
+                    costForKw = sa.getHostCard().getManaCost();
+                } else {
+                    costForKw = manaPart.getMana();
+                }
+                // currently all cards only reduce by generic
+                int x = sa.getXManaCostPaid() != null ? costForKw.countX() * sa.getXManaCostPaid() : 0;
+                int maxGenericToReduce = costForKw.getGenericCost() + x;
+                // apply raises for keyword
+                maxGenericToReduce += sa.getPayCosts().getRaisedKeywordCosts().getOrDefault(kw, 0);
+                for (StaticAbility st : e.getValue()) {
+                    int toReduce = Math.min(applyReduceCostAbility(st, sa, cost, 0), maxGenericToReduce);
+                    maxGenericToReduce -= toReduce;
+                    reduced += toReduce;
+                    if (maxGenericToReduce == 0) {
+                        break;
+                    }
+                }
+            }
+        }
+        return reduced;
+    }
+
     // GetSpellCostChange
 
     private static boolean adjustCostByAssist(ManaCostBeingPaid cost, final SpellAbility sa, boolean test) {

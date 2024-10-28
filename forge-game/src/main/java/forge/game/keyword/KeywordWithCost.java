@@ -5,6 +5,10 @@ import forge.game.cost.Cost;
 public class KeywordWithCost extends KeywordInstance<KeywordWithCost> {
     protected Cost cost;
 
+    public Cost getCost() {
+        return cost;
+    }
+
     @Override
     protected void parse(String details) {
         String[] allDetails = details.split(":");

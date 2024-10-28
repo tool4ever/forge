@@ -18,6 +18,8 @@
 package forge.game.cost;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
 import forge.card.CardType;
 import forge.card.mana.ManaCost;
 import forge.card.mana.ManaCostParser;
@@ -53,6 +55,7 @@ public class Cost implements Serializable {
     private boolean isAbility = true;
     private final List<CostPart> costParts = Lists.newArrayList();
     private boolean isMandatory = false;
+    private Map<String, Integer> raisedKeywordCosts = Maps.newHashMap();
 
     // Primarily used for Summoning Sickness awareness
     private boolean tapCost = false;
@@ -108,6 +111,10 @@ public class Cost implements Serializable {
      */
     public final List<CostPart> getCostParts() {
         return this.costParts;
+    }
+
+    public Map<String, Integer> getRaisedKeywordCosts() {
+        return raisedKeywordCosts;
     }
 
     public void sort() {
