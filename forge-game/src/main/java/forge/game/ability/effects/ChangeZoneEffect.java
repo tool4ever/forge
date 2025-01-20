@@ -537,11 +537,9 @@ public class ChangeZoneEffect extends SpellAbilityEffect {
             if (gameCard == null || !tgtC.equalsWithGameTimestamp(gameCard) || gameCard.isPhasedOut()) {
                 continue;
             }
-
             if (sa.hasParam("RememberLKI")) {
                 hostCard.addRemembered(CardCopyService.getLKICopy(gameCard));
             }
-
             final String prompt = TextUtil.concatWithSpace(Localizer.getInstance().getMessage("lblDoYouWantMoveTargetFromOriToDest", CardTranslation.getTranslatedName(gameCard.getName()), Lang.joinHomogenous(origin, ZoneType::getTranslatedName), destination.getTranslatedName()));
             if (optional && !chooser.getController().confirmAction(sa, null, prompt, null)) {
                 continue;
