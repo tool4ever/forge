@@ -84,7 +84,7 @@ public class SetStateEffect extends SpellAbilityEffect {
             // gameCard is LKI in that case, the card is not in game anymore
             // or the timestamp did change
             // this should check Self too
-            if (gameCard == null || !tgtCard.equalsWithTimestamp(gameCard)) {
+            if (gameCard == null || !tgtCard.equalsWithGameTimestamp(gameCard)) {
                 continue;
             }
 
@@ -184,8 +184,8 @@ public class SetStateEffect extends SpellAbilityEffect {
                     game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
                 } else if (hiddenAgenda) {
                     if (gameCard.hasKeyword("Double agenda")) {
-                        String sb = p + " has revealed " + gameCard.getName() + " with the chosen names " +
-                                gameCard.getNamedCard() + " and " + gameCard.getNamedCard2();
+                        String sb = p + " has revealed " + gameCard.getName() + " with the chosen names: " +
+                                gameCard.getNamedCards();
                         game.getGameLog().add(GameLogEntryType.STACK_RESOLVE, sb);
                     } else {
                         String sb = p + " has revealed " + gameCard.getName() + " with the chosen name " + gameCard.getNamedCard();

@@ -32,6 +32,7 @@ import forge.game.cost.Cost;
 import forge.game.cost.CostDiscard;
 import forge.game.cost.CostPart;
 import forge.game.cost.CostReveal;
+import forge.game.keyword.Keyword;
 import forge.game.mana.ManaCostBeingPaid;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementEffect;
@@ -160,7 +161,7 @@ public class PlayEffect extends SpellAbilityEffect {
                 return;
             }
         } else if (sa.hasParam("CopyFromChosenName")) {
-            String name = source.getChosenName();
+            String name = source.getNamedCard();
             if (name.trim().isEmpty()) return;
             Card card = Card.fromPaperCard(StaticData.instance().getCommonCards().getUniqueByName(name), controller);
             // so it gets added to stack
@@ -172,7 +173,7 @@ public class PlayEffect extends SpellAbilityEffect {
             // filter only cards that didn't changed zones
             for (Card c : getTargetCards(sa)) {
                 Card gameCard = game.getCardState(c, null);
-                if (c.equalsWithTimestamp(gameCard)) {
+                if (c.equalsWithGameTimestamp(gameCard)) {
                     tgtCards.add(gameCard);
                 } else if (sa.hasParam("ZoneRegardless")) {
                     tgtCards.add(c);
@@ -383,6 +384,8 @@ public class PlayEffect extends SpellAbilityEffect {
                         continue;
                     }
                     abCost = new Cost(source.getManaCost(), false);
+                } else if (cost.equals("SuspendCost")) {
+                    abCost = Iterables.find(tgtCard.getNonManaAbilities(), s -> s.getKeyword() != null && s.getKeyword().getKeyword() == Keyword.SUSPEND).getPayCosts();
                 } else {
                     if (cost.contains("ConvertedManaCost")) {
                         if (unpayableCost) {

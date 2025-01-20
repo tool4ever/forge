@@ -75,7 +75,7 @@ public final class CardPredicates {
         return new Predicate<Card>() {
             @Override
             public boolean apply(final Card c) {
-                return !c.getOwner().hasLost();
+                return c.getOwner().isInGame();
             }
         };
     }
@@ -352,6 +352,15 @@ public final class CardPredicates {
         };
     }
 
+    public static final Predicate<Card> hasSuspend() {
+        return new Predicate<Card>() {
+            @Override
+            public boolean apply(final Card c) {
+                return c.hasSuspend();
+            }
+        };
+    }
+
     public static final Predicate<Card> hasCounters() {
         return new Predicate<Card>() {
             @Override
@@ -445,11 +454,11 @@ public final class CardPredicates {
         };
     }
 
-    public static final Comparator<Card> compareByTimestamp() {
+    public static final Comparator<Card> compareByGameTimestamp() {
         return new Comparator<Card>() {
             @Override
             public int compare(Card arg0, Card arg1) {
-                return Long.compare(arg0.getTimestamp(), arg1.getTimestamp());
+                return Long.compare(arg0.getGameTimestamp(), arg1.getGameTimestamp());
             }
         };
     }

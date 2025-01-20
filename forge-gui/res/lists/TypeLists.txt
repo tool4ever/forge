@@ -420,6 +420,7 @@ Undercity
 Siege
 [PlanarTypes]
 Alara
+Alfava Metraxis
 Amonkhet
 Antausia
 Arcavios
@@ -456,6 +457,7 @@ Kylem
 Kyneth
 Lorwyn
 Luvion
+Mars
 Mercadia
 Mirrodin
 Moag
@@ -473,6 +475,7 @@ Serra's Realm
 Shadowmoor
 Shandalar
 Shenmeng
+Skaro
 Tarkir
 The Abyss
 The Library

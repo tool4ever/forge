@@ -265,7 +265,8 @@ public class GameCopier {
 
         for (Card card : origGame.getCardsIn(ZoneType.Battlefield)) {
             Card otherCard = cardMap.get(card);
-            otherCard.setTimestamp(card.getTimestamp());
+            otherCard.setGameTimestamp(card.getGameTimestamp());
+            otherCard.setLayerTimestamp(card.getLayerTimestamp());
             otherCard.setSickness(card.hasSickness());
             otherCard.setState(card.getCurrentStateName(), false);
             if (card.isAttachedToEntity()) {
@@ -431,10 +432,7 @@ public class GameCopier {
                 newCard.setChosenColors(Lists.newArrayList(c.getChosenColors()));
             }
             if (!c.getNamedCard().isEmpty()) {
-                newCard.setNamedCard(c.getNamedCard());
-            }
-            if (!c.getNamedCard2().isEmpty()) {
-                newCard.setNamedCard2(c.getNamedCard());
+                newCard.setNamedCards(Lists.newArrayList(c.getNamedCards()));
             }
             newCard.setSVars(c.getSVars());
             newCard.copyChangedSVarsFrom(c);

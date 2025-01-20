@@ -296,8 +296,7 @@ public final class CardUtil {
 
         newCopy.setChosenType(in.getChosenType());
         newCopy.setChosenType2(in.getChosenType2());
-        newCopy.setChosenName(in.getChosenName());
-        newCopy.setChosenName2(in.getChosenName2());
+        newCopy.setNamedCards(in.getNamedCards());
         newCopy.setChosenColors(Lists.newArrayList(in.getChosenColors()));
         if (in.hasChosenNumber()) {
             newCopy.setChosenNumber(in.getChosenNumber());
@@ -321,7 +320,8 @@ public final class CardUtil {
 
         newCopy.copyChangedTextFrom(in);
 
-        newCopy.setTimestamp(in.getTimestamp());
+        newCopy.setGameTimestamp(in.getGameTimestamp());
+        newCopy.setLayerTimestamp(in.getLayerTimestamp());
 
         newCopy.setBestowTimestamp(in.getBestowTimestamp());
 
