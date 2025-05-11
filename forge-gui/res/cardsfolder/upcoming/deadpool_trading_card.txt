@@ -1,0 +1,12 @@
+Name:Deadpool, Trading Card
+ManaCost:2 B R
+Types:Legendary Creature Mutant Mercenary Hero
+PT:5/3
+R:Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | ReplaceWith$ ETBText | ReplacementResult$ Updated | ActiveZones$ Battlefield | Description$ As NICKNAME enters, you may exchange his text box and another creature’s.
+SVar:ETBText:DB$ ChooseCard | Choices$ Creature.Other | SubAbility$ DBExchange
+SVar:DBExchange:DB$ ChangeText | Defined$ ChosenCardAndSelf | TextBoxExchange$ True | Duration$ Permanent | SubAbility$ DBCleanup
+SVar:DBCleanup:DB$ Cleanup | ClearChosenCard$ True
+T:Mode$ Phase | ValidPlayer$ You | Phase$ Upkeep | TriggerZones$ Battlefield | Execute$ TrigLose | TriggerDescription$ At the beginning of your upkeep, you lose 3 life.
+SVar:TrigLose:DB$ LoseLife | LifeAmount$ 3
+A:AB$ Draw | Cost$ 3 Sac<1/CARDNAME> | Defined$ Player.Other | SpellDescription$ Each other player draws a card.
+Oracle:As Deadpool enters, you may exchange his text box and another creature’s.\nAt the beginning of your upkeep, you lose 3 life.\n{3}, Sacrifice this creature: Each other player draws a card.

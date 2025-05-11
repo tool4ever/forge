@@ -11,8 +11,13 @@ import forge.card.MagicColor;
 import forge.game.Game;
 import forge.game.ability.SpellAbilityEffect;
 import forge.game.card.Card;
+import forge.game.card.CardState;
 import forge.game.event.GameEventCardStatsChanged;
+import forge.game.keyword.KeywordInterface;
+import forge.game.replacement.ReplacementEffect;
 import forge.game.spellability.SpellAbility;
+import forge.game.staticability.StaticAbility;
+import forge.game.trigger.Trigger;
 import forge.util.Localizer;
 import forge.util.TextUtil;
 
@@ -99,12 +104,39 @@ public class ChangeTextEffect extends SpellAbilityEffect {
         }
 
         final List<Card> tgts = getCardsfromTargets(sa);
+
+        Card first = null;
+        Card second = null;
+        if (sa.hasParam("TextBoxExchange") && tgts.size() == 2) {
+            first = tgts.get(0);
+            second = tgts.get(1);
+        }
+
         for (final Card c : tgts) {
             if (changedColorWordOriginal != null && changedColorWordNew != null) {
                 c.addChangedTextColorWord(changedColorWordOriginal, changedColorWordNew, timestamp, 0);
             }
             if (changedTypeWordOriginal != null && changedTypeWordNew != null) {
                 c.addChangedTextTypeWord(changedTypeWordOriginal, changedTypeWordNew, timestamp, 0);
+            }
+
+            if (c == first) {
+                List<SpellAbility> spellAbilities = Lists.newArrayList();
+                List<Trigger> trigger = Lists.newArrayList();
+                List<ReplacementEffect> replacementEffects = Lists.newArrayList();
+                List<StaticAbility> staticAbilities = Lists.newArrayList();
+                List<KeywordInterface> keywords = Lists.newArrayList();
+                List<SpellAbility> spellAbilities2 = Lists.newArrayList();
+                List<Trigger> trigger2 = Lists.newArrayList();
+                List<ReplacementEffect> replacementEffects2 = Lists.newArrayList();
+                List<StaticAbility> staticAbilities2 = Lists.newArrayList();
+                List<KeywordInterface> keywords2 = Lists.newArrayList();
+                prepareTextBox(first ,second, spellAbilities, trigger, replacementEffects, staticAbilities, keywords);
+                prepareTextBox(second ,first, spellAbilities2, trigger2, replacementEffects2, staticAbilities2, keywords2);
+                first.addChangedCardTraitsByText(spellAbilities2, trigger2, replacementEffects2, staticAbilities2, timestamp, 0);
+                first.addChangedCardKeywordsByText(keywords2, timestamp, 0, false);
+                second.addChangedCardTraitsByText(spellAbilities, trigger, replacementEffects, staticAbilities, timestamp, 0);
+                second.addChangedCardKeywordsByText(keywords, timestamp, 0, false);
             }
 
             if (!permanent) {
@@ -126,6 +158,39 @@ public class ChangeTextEffect extends SpellAbilityEffect {
             game.fireEvent(new GameEventCardStatsChanged(c));
             c.updateStateForView();
             c.updateTypesForView();
+        }
+    }
+
+    private void prepareTextBox(Card first, Card second, List<SpellAbility> spellAbilities, List<Trigger> trigger, List<ReplacementEffect> replacementEffects, List<StaticAbility> staticAbilities, List<KeywordInterface> keywords) {
+        for (SpellAbility ctb : first.getSpellAbilities()) {
+            if (!ctb.isIntrinsic()) {
+                continue;
+            }
+            spellAbilities.add(ctb.copy(second, false));
+        }
+        for (Trigger ctb : first.getTriggers()) {
+            if (!ctb.isIntrinsic()) {
+                continue;
+            }
+            trigger.add(ctb.copy(second, false));
+        }
+        for (ReplacementEffect ctb : first.getReplacementEffects()) {
+            if (!ctb.isIntrinsic()) {
+                continue;
+            }
+            replacementEffects.add(ctb.copy(second, false));
+        }
+        for (StaticAbility ctb : first.getStaticAbilities()) {
+            if (!ctb.isIntrinsic()) {
+                continue;
+            }
+            staticAbilities.add(ctb.copy(second, false));
+        }
+        for (KeywordInterface ki : first.getKeywords()) {
+            if (!ki.isIntrinsic()) {
+                continue;
+            }
+            keywords.add(ki.copy(second ,false));
         }
     }
 
