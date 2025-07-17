@@ -1,0 +1,1 @@
+https://github.com/Card-Forge/forge/blob/master/forge-game/src/main/java/forge/game/replacement/ReplacementType.java
