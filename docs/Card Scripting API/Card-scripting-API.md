@@ -28,7 +28,7 @@ There are a few other Parameters that will appear in most, if not all, cards. Th
 
 | Property | Description
 | - | -
-|`A`|[Ability effect](AbilityFactory.md)
+|`A`|[Ability effect](./AbilityFactory.md)
 |`AI`|RemoveDeck:<br />* `All`<br />This will prevent the card from appearing in random AI decks. It is applicable for cards the AI can't use at all like Dark Ritual and also for cards that the AI could use, but only ineffectively like Tortoise Formation. The AI won't draft these cards.<br />* `Random`<br /> This will prevent the card from appearing in random decks. It is only applicable for cards that are too narrow for random decks like Root Cage or Into the North. The AI won't draft these cards.<br />* `NonCommander`<br /> 
 |`Colors`|Color(s) of the card<br /><br />When a card's color is determined by a color indicator rather than shards in a mana cost, this property must be defined. If no identifier is needed, this property should be omitted.<br /><br />* `Colors:red` - This is used on Kobolds of Kher Keep, which has a casting cost of {0} and requires a red indicator to make it red.<br /><br />* `Colors:red,green` - Since Arlinn, Embraced by the Moon has no casting cost (it's the back of a double-faced card), the red and green indicator must be included.
 |`DeckHints`|AI-related hints for a deck including this card<br /><br />To improve synergy this will increase the rank of of all other cards that share some of its DeckHints types. This helps with smoothing the selection so cards without these Entries won't be at an unfair disadvantage.<br /><br />The relevant code can be found in the [CardRanker](https://git.cardforge.org/core-developers/forge/-/blob/master/forge-gui/src/main/java/forge/gamemodes/limited/CardRanker.java) class.
