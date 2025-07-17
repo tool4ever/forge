@@ -15,7 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: impresscms-dev/strip-markdown-extensions-from-links-action@v2.0.1
+        with:
+          path: docs
       - uses: Andrew-Chen-Wang/github-wiki-action@v5
         with:
           path: docs
-          preprocess: true
+          preprocess: false
