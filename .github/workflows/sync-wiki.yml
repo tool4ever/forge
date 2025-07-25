@@ -22,4 +22,4 @@ jobs:
         with:
           source: docs
           destination: wiki
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
