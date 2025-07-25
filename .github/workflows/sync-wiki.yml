@@ -18,7 +18,8 @@ jobs:
       - uses: impresscms-dev/strip-markdown-extensions-from-links-action@v2.0.1
         with:
           path: docs
-      - uses: Andrew-Chen-Wang/github-wiki-action@v5
+      - uses: newrelic/wiki-sync-action@main
         with:
-          path: docs
-          preprocess: false
+          source: docs
+          destination: wiki
+          token: ${{ secrets.GITHUB_TOKEN }}
