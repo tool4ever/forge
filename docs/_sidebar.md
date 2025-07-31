@@ -1,5 +1,5 @@
 ### [Forge Wiki Home](Home)
-- [User Guide](User-Guide)
+- [User Guide](User-Guide.md)
   - [FAQ](Frequently-Asked-Questions)
   - [AI](ai)
   - [Network Play](network-play)
@@ -30,7 +30,7 @@
     - [Tutorial 3, Configuration (Configuring your Plane)](https://github.com/Card-Forge/forge/wiki/Tutorial-3-Configuration)
 
 
-- [Card Scripting API](Card-scripting-API)
+- [Card Scripting API](Card Scripting API/Card-scripting-API.md)
   - [Ability effects](AbilityFactory)
   - [Triggers](Triggers)
   - [Replacements](Replacements)
