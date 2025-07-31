@@ -30,7 +30,7 @@
     - [Tutorial 3, Configuration (Configuring your Plane)](https://github.com/Card-Forge/forge/wiki/Tutorial-3-Configuration)
 
 
-- [Card Scripting API](Card Scripting API/Card-scripting-API.md)
+- [Card Scripting API](Card%20Scripting%20API/Card-scripting-API.md)
   - [Ability effects](AbilityFactory)
   - [Triggers](Triggers)
   - [Replacements](Replacements)
