@@ -65,7 +65,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.tinylog.Logger;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -6139,7 +6138,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
         if (assignedDamage0 <= 0) {
             return;
         }
-        Logger.debug(this + " - was assigned " + assignedDamage0 + " damage, by " + sourceCard);
+        //Logger.debug(this + " - was assigned " + assignedDamage0 + " damage, by " + sourceCard);
         if (!assignedDamageMap.containsKey(sourceCard)) {
             assignedDamageMap.put(sourceCard, assignedDamage0);
         } else {

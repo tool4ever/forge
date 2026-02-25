@@ -67,8 +67,6 @@ import forge.util.*;
 import io.sentry.Breadcrumb;
 import io.sentry.Sentry;
 
-import org.tinylog.Logger;
-
 import java.util.*;
 import java.util.concurrent.FutureTask;
 import java.util.function.Function;
@@ -1339,7 +1337,6 @@ public class AiController {
 
         for (final Card element : combat.getAttackers()) {
             // tapping of attackers happens after Propaganda is paid for
-            Logger.debug("Computer just assigned " + element.getName() + " as an attacker.");
         }
     }
 
@@ -1379,7 +1376,6 @@ public class AiController {
         CardCollection landsWannaPlay = ComputerUtilAbility.getAvailableLandsToPlay(game, player);
         if (landsWannaPlay != null) {
             landsWannaPlay = filterLandsToPlay(landsWannaPlay);
-            Logger.debug("Computer " + game.getPhaseHandler().getPhase().nameForUi);
             if (landsWannaPlay != null && !landsWannaPlay.isEmpty()) {
                 // TODO search for other land it might want to play?
                 Card land = chooseBestLandToPlay(landsWannaPlay);

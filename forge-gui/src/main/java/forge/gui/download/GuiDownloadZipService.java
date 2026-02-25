@@ -1,7 +1,5 @@
 package forge.gui.download;
 
-import org.tinylog.Logger;
-
 import com.google.common.io.Files;
 import forge.gui.FThreads;
 import forge.gui.GuiBase;
@@ -141,7 +139,7 @@ public class GuiDownloadZipService extends GuiDownloadService {
             return destFile;
         }
         catch (final Exception ex) {
-            Logger.error("Downloading " + desc, "Error downloading " + desc, ex);
+            //Logger.error("Downloading " + desc, "Error downloading " + desc, ex);
             return null;
         }
         finally {
@@ -216,7 +214,7 @@ public class GuiDownloadZipService extends GuiDownloadService {
             }
 
             if (failedCount > 0) {
-                Logger.error("Downloading " + desc, failedCount + " " + desc + " could not be extracted");
+                //Logger.error("Downloading " + desc, failedCount + " " + desc + " could not be extracted");
             }
 
             zipFile.close();
