@@ -12,7 +12,7 @@ import net.jpountz.lz4.LZ4BlockInputStream;
 import java.io.ObjectInputStream;
 import java.io.StreamCorruptedException;
 
-public class CompatibleObjectDecoder extends LengthFieldBasedFrameDecoder implements IHasNetLog {
+public class CompatibleObjectDecoder extends LengthFieldBasedFrameDecoder implements IHasForgeLog {
 
     private final ClassResolver classResolver;
     private volatile Tracker tracker;

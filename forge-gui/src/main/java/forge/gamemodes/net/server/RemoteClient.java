@@ -12,7 +12,7 @@ import io.netty.channel.Channel;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class RemoteClient implements IToClient, IHasNetLog {
+public final class RemoteClient implements IToClient, IHasForgeLog {
 
     /** Special value indicating the client hasn't been assigned a slot yet. */
     public static final int UNASSIGNED_SLOT = -1;
