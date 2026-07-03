@@ -1633,7 +1633,7 @@ public class ComputerUtilMana {
 
                 SpellAbility tail = m;
                 while (tail != null) {
-                    AbilityManaPart mp = m.getManaPart();
+                    AbilityManaPart mp = tail.getManaPart();
                     if (mp != null && tail.metConditions()) {
                         // TODO Replacement Check currently doesn't work for reflected colors
 
@@ -1650,11 +1650,11 @@ public class ComputerUtilMana {
                             Set<String> reflectedColors = CardUtil.getReflectableManaColors(m);
                             // find possible colors
                             for (byte color : MagicColor.WUBRG) {
-                                if (tail.canThisProduce(MagicColor.toShortString(color)) || reflectedColors.contains(MagicColor.toLongString(color))) {
+                                if (mp.canProduce(MagicColor.toShortString(color), tail) || reflectedColors.contains(MagicColor.toLongString(color))) {
                                     manaMap.put((int)color, m);
                                 }
                             }
-                            if (m.canThisProduce("C") || reflectedColors.contains(MagicColor.Constant.COLORLESS)) {
+                            if (mp.canProduce("C", tail) || reflectedColors.contains(MagicColor.Constant.COLORLESS)) {
                                 manaMap.put(ManaAtom.COLORLESS, m);
                             }
                         } else {
