@@ -3,6 +3,7 @@ package forge.game.ability.effects;
 import java.util.Comparator;
 import java.util.List;
 
+import forge.util.Expressions;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.collect.Lists;
@@ -239,8 +240,21 @@ public class CharmEffect extends SpellAbilityEffect {
         }
 
         if (sa.hasParam("Random")) {
-            chainAbilities(sa, Aggregates.random(choices, num));
-            return true;
+            if (sa.getParam("Random").equals("Compare")) {
+                // RandomCompareSVar$ Y | RandomCompare$ LT1
+                String svar = sa.getParam("RandomCompareSVar");
+                String compare = sa.getParam("RandomCompare");
+                int value = AbilityUtils.calculateAmount(source, sa.getSVar(svar), sa);
+
+                if (Expressions.compare(value, compare.substring(0, 2), Integer.parseInt(compare.substring(2)))) {
+                    // If we don't meet the condition, let the player choose
+                    chainAbilities(sa, Aggregates.random(choices, num));
+                    return true;
+                }
+            } else {
+                chainAbilities(sa, Aggregates.random(choices, num));
+                return true;
+            }
         }
 
         Player chooser = sa.getActivatingPlayer();
