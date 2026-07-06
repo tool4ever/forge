@@ -57,3 +57,11 @@ pipeline generates `robovm.properties` from `robovm.properties.template` on
 first run (or copy the template manually and fill in `@APP_ID@`). Signing
 settings (`SIGN_ID`, `PROFILE`, `TEAM_ID`) and device UDIDs also live in
 `.env` — nothing machine- or identity-specific is tracked.
+
+## Fresh-clone bootstrap
+
+`ios-pipeline.sh` also builds and installs every `forge-gui-ios/pom.xml`
+supply dependency into `~/.m2` on first run (streamsupport, the jvmdg api
+jar, `java-nio-supply`, `java-function-stubs`, the sentry no-op stubs via
+`sentry-stub/build.sh`, and a `java-time-supply` compile placeholder) — a
+fresh clone needs only a JDK 17, Maven, Xcode, and an `.env`.

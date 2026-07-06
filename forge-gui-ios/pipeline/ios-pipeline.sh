@@ -155,6 +155,42 @@ bootstrap() {
             -d "$JV/java-supply-classes" $(find . -name "*.java"))
         (cd "$JV/java-supply-classes" && jar cf "$NIO_JAR" .)
     fi
+
+    # java.util.function stubs (satisfy MobiVM's own Comparator signatures)
+    FUNC_JAR="$JV/java-function-stubs.jar"
+    if [ ! -f "$FUNC_JAR" ] || [ -n "$(find "$PIPE/java-function-stubs/src" -name '*.java' -newer "$FUNC_JAR" 2>/dev/null | head -1)" ]; then
+        rm -rf "$JV/function-stub-classes"
+        mkdir -p "$JV/function-stub-classes"
+        (cd "$PIPE/java-function-stubs/src" && javac --patch-module java.base=. --release 17 \
+            -d "$JV/function-stub-classes" $(find . -name "*.java"))
+        (cd "$JV/function-stub-classes" && jar cf "$FUNC_JAR" .)
+    fi
+
+    # sentry no-op stubs
+    if [ ! -f "$JV/.sentry-stub-built" ] || [ -n "$(find "$ROOT/forge-gui-ios/sentry-stub/src" -name '*.java' -newer "$JV/.sentry-stub-built" 2>/dev/null | head -1)" ]; then
+        bash "$ROOT/forge-gui-ios/sentry-stub/build.sh"
+        touch "$JV/.sentry-stub-built"
+    fi
+
+    # install every pom-declared supply into ~/.m2 so forge-gui-ios compiles
+    # resolve on a fresh clone (the classpath step installs the transformed
+    # variants into the build clone separately)
+    m2_install() { # groupId artifactId version file
+        if [ ! -f "$M2/$(tr . / <<< "$1")/$2/$3/$2-$3.jar" ]; then
+            mvn -q --settings "$SETTINGS" install:install-file -Dpackaging=jar \
+                -DgroupId="$1" -DartifactId="$2" -Dversion="$3" -Dfile="$4"
+        fi
+    }
+    m2_install net.sourceforge.streamsupport streamsupport "$SS_VER" "$SS_JAR"
+    m2_install net.sourceforge.streamsupport streamsupport-cfuture "$SS_VER" "$SSCF_JAR"
+    m2_install xyz.wagyourtail.jvmdowngrader jvmdowngrader-java-api "$JVMDG_VER-mobivm" "$API8_JAR"
+    m2_install forge.stubs java-nio-supply 1.0 "$NIO_JAR"
+    m2_install forge.stubs java-function-stubs 1.0 "$FUNC_JAR"
+    if [ ! -f "$M2/forge/stubs/java-time-supply/1.0/java-time-supply-1.0.jar" ]; then
+        # compile-time placeholder; the classpath step installs the real
+        # (relocated) variant into the build clone
+        m2_install forge.stubs java-time-supply 1.0 "$THREETEN_JAR"
+    fi
 }
 
 # ------------------------------------------------------------- transform all
