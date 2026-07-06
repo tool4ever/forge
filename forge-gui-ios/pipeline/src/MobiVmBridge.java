@@ -1,0 +1,349 @@
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Handle;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.ClassRemapper;
+import org.objectweb.asm.commons.Remapper;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
+
+/**
+ * MobiVM bridge pass: makes JvmDowngrader(-c 52) output link against MobiVM's
+ * Java-7-era runtime by (a) whole-type remapping of classes absent from the
+ * runtime to their streamsupport/backport mirrors (java.util.function.* ->
+ * java8.util.function.*, java.util.stream.* -> java8.util.stream.*, Optional,
+ * CompletableFuture, ...), and (b) hierarchy-aware member redirection of
+ * Java-8 default/static members on classes that DO exist (Map.getOrDefault ->
+ * java8.util.Maps.getOrDefault(map, ...), Comparator.comparing ->
+ * java8.util.Comparators.comparing, ...). Also rewrites method-reference
+ * Handles inside invokedynamic bootstrap args with the same member table.
+ *
+ * A member is only redirected if it does NOT resolve against the index
+ * (runtime + supplies + all app jars), so app classes that define their own
+ * getOrDefault etc. are left untouched. Unresolved references with no rule
+ * are collected and printed (the residual porting workload; final gate is
+ * MobiVmLinkAudit).
+ *
+ * Rules file format (# comments, blank lines ok):
+ *   type <internalNamePrefix> <replacementPrefix>
+ *   member <declaringOwner> <name> <targetOwner> [PREPEND <receiverDesc>]
+ *
+ * Usage:
+ *   MobiVmBridge --rules bridge.cfg --index rt.jar,supply1.jar,... \
+ *                --in in.jar --out out.jar
+ * Multiple --in/--out pairs allowed (order-paired); index should include ALL
+ * app jars so cross-jar overrides resolve.
+ */
+public class MobiVmBridge {
+
+    // ---- index (same resolution model as MobiVmLinkAudit) ----
+    static class ClassInfo {
+        String superName;
+        String[] interfaces;
+        final Set<String> methods = new HashSet<>();
+        final Set<String> fields = new HashSet<>();
+    }
+    static final Map<String, ClassInfo> INDEX = new HashMap<>();
+
+    // ---- rules ----
+    static final List<String[]> TYPE_PREFIXES = new ArrayList<>(); // [from, to], longest-first
+    // declaringOwner -> name -> {targetOwner, prependDescOrNull}
+    static final Map<String, Map<String, String[]>> MEMBER_RULES = new HashMap<>();
+
+    static final Map<String, List<String>> UNRESOLVED = new TreeMap<>();
+    static int redirects = 0;
+    static int handleRedirects = 0;
+
+    public static void main(String[] args) throws Exception {
+        List<String> ins = new ArrayList<>();
+        List<String> outs = new ArrayList<>();
+        String rules = null;
+        List<String> index = new ArrayList<>();
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--rules": rules = args[++i]; break;
+                case "--index": for (String s : args[++i].split(",")) index.add(s); break;
+                case "--in": ins.add(args[++i]); break;
+                case "--out": outs.add(args[++i]); break;
+                default: throw new IllegalArgumentException(args[i]);
+            }
+        }
+        if (rules != null) loadRules(rules);
+        for (String jar : index) indexJar(jar);
+
+        for (int i = 0; i < ins.size(); i++) {
+            transform(Paths.get(ins.get(i)), Paths.get(outs.get(i)));
+        }
+        System.out.println("BRIDGE: " + redirects + " member redirects, " + handleRedirects
+                + " handle redirects across " + ins.size() + " jar(s)");
+        if (!UNRESOLVED.isEmpty()) {
+            System.out.println("BRIDGE-UNRESOLVED (" + UNRESOLVED.size() + ") — no rule, left as-is:");
+            for (Map.Entry<String, List<String>> e : UNRESOLVED.entrySet()) {
+                System.out.println("  " + e.getKey() + "  <- " + e.getValue().size()
+                        + " refs, e.g. " + e.getValue().get(0));
+            }
+        }
+    }
+
+    static void loadRules(String path) throws Exception {
+        for (String line : Files.readAllLines(Paths.get(path), StandardCharsets.UTF_8)) {
+            line = line.trim();
+            if (line.isEmpty() || line.startsWith("#")) continue;
+            String[] p = line.split("\\s+");
+            if ("type".equals(p[0])) {
+                TYPE_PREFIXES.add(new String[]{p[1], p[2]});
+            } else if ("member".equals(p[0])) {
+                String prepend = null;
+                if (p.length >= 6 && "PREPEND".equals(p[4])) prepend = p[5];
+                MEMBER_RULES.computeIfAbsent(p[1], k -> new HashMap<>())
+                        .put(p[2], new String[]{p[3], prepend});
+            } else {
+                throw new IllegalArgumentException("bad rule: " + line);
+            }
+        }
+        // longest prefix first so java/util/OptionalInt beats java/util/Optional if both listed
+        TYPE_PREFIXES.sort((a, b) -> b[0].length() - a[0].length());
+    }
+
+    static void indexJar(String jarPath) throws Exception {
+        try (ZipFile zf = new ZipFile(jarPath)) {
+            java.util.Enumeration<? extends ZipEntry> en = zf.entries();
+            while (en.hasMoreElements()) {
+                ZipEntry e = en.nextElement();
+                if (!e.getName().endsWith(".class") || e.getName().startsWith("META-INF/versions/")) continue;
+                try (InputStream is = zf.getInputStream(e)) {
+                    ClassReader cr = new ClassReader(is);
+                    final ClassInfo ci = new ClassInfo();
+                    cr.accept(new ClassVisitor(Opcodes.ASM9) {
+                        @Override
+                        public void visit(int v, int a, String name, String sig, String sup, String[] ifs) {
+                            ci.superName = sup;
+                            ci.interfaces = ifs;
+                            INDEX.put(name, ci);
+                        }
+                        @Override
+                        public MethodVisitor visitMethod(int a, String name, String desc, String sig, String[] ex) {
+                            ci.methods.add(name + desc);
+                            return null;
+                        }
+                        @Override
+                        public FieldVisitor visitField(int a, String name, String desc, String sig, Object val) {
+                            ci.fields.add(name);
+                            return null;
+                        }
+                    }, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+                }
+            }
+        }
+    }
+
+    static boolean isTracked(String owner) {
+        return owner.startsWith("java/") || owner.startsWith("javax/");
+    }
+
+    static boolean methodResolves(String owner, String nameDesc) {
+        if (owner.startsWith("[")) return true;
+        Set<String> seen = new HashSet<>();
+        List<String> work = new ArrayList<>();
+        work.add(owner);
+        while (!work.isEmpty()) {
+            String c = work.remove(work.size() - 1);
+            if (c == null || !seen.add(c)) continue;
+            ClassInfo ci = INDEX.get(c);
+            if (ci == null) continue;
+            if (ci.methods.contains(nameDesc)) return true;
+            if (ci.superName != null) work.add(ci.superName);
+            if (ci.interfaces != null) for (String i : ci.interfaces) work.add(i);
+        }
+        return false;
+    }
+
+    /** Walk owner's hierarchy for a member rule matching this method name. */
+    static String[] findRule(String owner, String name) {
+        Set<String> seen = new HashSet<>();
+        List<String> work = new ArrayList<>();
+        work.add(owner);
+        while (!work.isEmpty()) {
+            String c = work.remove(work.size() - 1);
+            if (c == null || !seen.add(c)) continue;
+            Map<String, String[]> byName = MEMBER_RULES.get(c);
+            if (byName != null) {
+                String[] r = byName.get(name);
+                if (r != null) return r;
+            }
+            ClassInfo ci = INDEX.get(c);
+            if (ci != null) {
+                if (ci.superName != null) work.add(ci.superName);
+                if (ci.interfaces != null) for (String i : ci.interfaces) work.add(i);
+            }
+        }
+        return null;
+    }
+
+    static void reportUnresolved(String key, String where) {
+        List<String> l = UNRESOLVED.get(key);
+        if (l == null) {
+            l = new ArrayList<>();
+            UNRESOLVED.put(key, l);
+        }
+        l.add(where);
+    }
+
+    // ---- the type remapper ----
+    static final Remapper TYPE_REMAPPER = new Remapper() {
+        @Override
+        public String map(String internalName) {
+            for (String[] p : TYPE_PREFIXES) {
+                if (internalName.startsWith(p[0])) {
+                    return p[1] + internalName.substring(p[0].length());
+                }
+            }
+            return internalName;
+        }
+    };
+
+    // ---- transform one jar ----
+    static void transform(Path in, Path out) throws Exception {
+        try (ZipFile zin = new ZipFile(in.toFile());
+             ZipOutputStream zout = new ZipOutputStream(Files.newOutputStream(out))) {
+            java.util.Enumeration<? extends ZipEntry> en = zin.entries();
+            while (en.hasMoreElements()) {
+                ZipEntry e = en.nextElement();
+                if (e.isDirectory()) continue;
+                String n = e.getName();
+                // module descriptors are useless to RoboVM; stale jar signatures
+                // would be invalidated by the rewrite anyway
+                if (n.endsWith("module-info.class") || n.startsWith("META-INF/versions/")
+                        || (n.startsWith("META-INF/") && (n.endsWith(".SF") || n.endsWith(".RSA") || n.endsWith(".DSA") || n.endsWith(".EC")))) {
+                    continue;
+                }
+                try (InputStream is = zin.getInputStream(e)) {
+                    if (e.getName().endsWith(".class") && !e.getName().startsWith("META-INF/versions/")) {
+                        byte[] rewritten = rewriteClass(is);
+                        // the entry path must track the (possibly type-remapped)
+                        // class name — RoboVM locates classes by jar entry path
+                        String cls = new ClassReader(rewritten).getClassName();
+                        zout.putNextEntry(new ZipEntry(cls + ".class"));
+                        zout.write(rewritten);
+                    } else {
+                        zout.putNextEntry(new ZipEntry(e.getName()));
+                        byte[] buf = new byte[65536];
+                        int r;
+                        while ((r = is.read(buf)) > 0) zout.write(buf, 0, r);
+                    }
+                }
+                zout.closeEntry();
+            }
+        }
+    }
+
+    static byte[] rewriteClass(InputStream is) throws Exception {
+        ClassReader cr = new ClassReader(is);
+        ClassWriter cw = new ClassWriter(0);
+        // chain: reader -> member redirector -> type remapper -> writer
+        ClassVisitor remap = new ClassRemapper(cw, TYPE_REMAPPER);
+        ClassVisitor redirect = new MemberRedirector(remap, cr.getClassName());
+        cr.accept(redirect, ClassReader.EXPAND_FRAMES);
+        return cw.toByteArray();
+    }
+
+    static class MemberRedirector extends ClassVisitor {
+        final String self;
+
+        MemberRedirector(ClassVisitor cv, String self) {
+            super(Opcodes.ASM9, cv);
+            this.self = self;
+        }
+
+        @Override
+        public MethodVisitor visitMethod(int acc, String mname, String mdesc, String sig, String[] ex) {
+            MethodVisitor mv = super.visitMethod(acc, mname, mdesc, sig, ex);
+            final String where = self + "." + mname;
+            return new MethodVisitor(Opcodes.ASM9, mv) {
+                @Override
+                public void visitMethodInsn(int op, String owner, String name, String desc, boolean itf) {
+                    String[] rule = null;
+                    if (INDEX.containsKey(owner)) {
+                        // ANY indexed owner (incl. app classes): a call to a member
+                        // that no longer resolves is usually a Java 8 default method
+                        // inherited from a java.util interface (e.g.
+                        // forge CardCollection.forEach) — the hierarchy walk finds
+                        // the interface's rule
+                        if (!methodResolves(owner, name + desc)) {
+                            rule = findRule(owner, name);
+                            if (rule == null) {
+                                reportUnresolved("METHOD " + owner + "." + name + desc, where);
+                            }
+                        }
+                    } else if (isTracked(owner)) {
+                        // owner class absent from the index (whole-type-remapped,
+                        // e.g. java.util.stream.Stream): interface statics live in
+                        // companion classes (RefStreams etc.) — exact-owner rules
+                        Map<String, String[]> byName = MEMBER_RULES.get(owner);
+                        if (byName != null) {
+                            rule = byName.get(name);
+                        }
+                    }
+                    if (rule != null) {
+                        redirects++;
+                        String newDesc = (op == Opcodes.INVOKESTATIC || rule[1] == null)
+                                ? desc : "(" + rule[1] + desc.substring(1);
+                        super.visitMethodInsn(Opcodes.INVOKESTATIC, rule[0], name, newDesc, false);
+                        return;
+                    }
+                    super.visitMethodInsn(op, owner, name, desc, itf);
+                }
+
+                @Override
+                public void visitInvokeDynamicInsn(String name, String desc, Handle bsm, Object... args) {
+                    Object[] newArgs = new Object[args.length];
+                    for (int i = 0; i < args.length; i++) {
+                        Object a = args[i];
+                        if (a instanceof Handle) {
+                            Handle h = (Handle) a;
+                            String hOwner = h.getOwner();
+                            boolean hKnown = INDEX.containsKey(hOwner);
+                            if ((hKnown && !methodResolves(hOwner, h.getName() + h.getDesc()))
+                                    || (!hKnown && isTracked(hOwner))) {
+                                String[] rule;
+                                if (hKnown) {
+                                    rule = findRule(hOwner, h.getName());
+                                } else {
+                                    Map<String, String[]> byName = MEMBER_RULES.get(hOwner);
+                                    rule = byName == null ? null : byName.get(h.getName());
+                                }
+                                if (rule != null) {
+                                    handleRedirects++;
+                                    String hDesc = (h.getTag() == Opcodes.H_INVOKESTATIC || rule[1] == null)
+                                            ? h.getDesc() : "(" + rule[1] + h.getDesc().substring(1);
+                                    a = new Handle(Opcodes.H_INVOKESTATIC, rule[0], h.getName(), hDesc, false);
+                                } else if (hKnown) {
+                                    reportUnresolved("HANDLE " + hOwner + "." + h.getName() + h.getDesc(), where);
+                                }
+                            }
+                        }
+                        newArgs[i] = a;
+                    }
+                    super.visitInvokeDynamicInsn(name, desc, bsm, newArgs);
+                }
+            };
+        }
+    }
+}
