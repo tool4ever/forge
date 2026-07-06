@@ -1,5 +1,7 @@
 package forge.adventure.util;
 
+import com.badlogic.gdx.Application;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -124,8 +126,15 @@ public class Config {
     }
 
     private String resPath() {
-
-        return GuiBase.isAndroid() ? ForgeConstants.ASSETS_DIR : Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
+        if (GuiBase.isAndroid()) {
+            return ForgeConstants.ASSETS_DIR;
+        }
+        // iOS: resources live inside the app bundle (ASSETS_DIR); the
+        // desktop-relative "./res" probes below never match there
+        if (Gdx.app != null && Gdx.app.getType() == Application.ApplicationType.iOS) {
+            return ForgeConstants.ASSETS_DIR;
+        }
+        return Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";
     }
 
     public String getPlanePath(String plane) {

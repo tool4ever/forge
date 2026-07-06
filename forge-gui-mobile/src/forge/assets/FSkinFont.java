@@ -2,8 +2,6 @@ package forge.assets;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 
 import com.badlogic.gdx.Gdx;
@@ -369,7 +367,15 @@ public class FSkinFont {
         String[] translationFilePaths = { ForgeConstants.LANG_DIR + "cardnames-" + langCode + ".txt",
                 ForgeConstants.LANG_DIR + langCode + ".properties" };
         for (String translationFilePath : translationFilePaths) {
-            try (LineReader translationFile = new LineReader(Files.newInputStream(Paths.get(translationFilePath)),
+            // On iOS, use internal() for bundled resources instead of absolute() to avoid sandbox violations
+            // Strip the assets directory prefix to get a relative path
+            String relativePath = translationFilePath.replace(ForgeConstants.ASSETS_DIR, "");
+            FileHandle translationFileHandle = Gdx.files.internal(relativePath);
+            // Skip if file doesn't exist (e.g., cardnames-en-US.txt doesn't exist because English is the base language)
+            if (!translationFileHandle.exists()) {
+                continue;
+            }
+            try (LineReader translationFile = new LineReader(translationFileHandle.read(),
                     StandardCharsets.UTF_8)) {
                 for (String fileLine : translationFile.readLines()) {
                     final int stringLength = fileLine.length();
@@ -407,7 +413,10 @@ public class FSkinFont {
         if (useCjkFont && !Forge.forcedEnglishonCJKMissing) {
             fontName += Forge.locale;
         }
-        FileHandle fontFile = Gdx.files.absolute(ForgeConstants.FONTS_DIR + fontName + ".fnt");
+        // On iOS, use internal() for bundled resources instead of absolute() to avoid sandbox violations
+        String fontPath = ForgeConstants.FONTS_DIR + fontName + ".fnt";
+        String relativeFontPath = fontPath.replace(ForgeConstants.ASSETS_DIR, "");
+        FileHandle fontFile = Gdx.files.internal(relativeFontPath);
         final boolean[] found = {false};
         if (fontFile != null && fontFile.exists()) {
             FThreads.invokeInEdtNowOrLater(() -> { //font must be initialized on UI thread
@@ -480,7 +489,8 @@ public class FSkinFont {
                             getTextureData().consumePixmap().dispose();
                         }
                     };
-                    texture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                    // Use Linear filtering for smoother text on high-DPI/Retina displays
+                    texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
                     textureRegions.addAll(new TextureRegion(texture));
                 }
 

@@ -1,5 +1,6 @@
 package forge.assets;
 
+import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetLoaderParameters;
@@ -8,6 +9,7 @@ import com.badlogic.gdx.assets.loaders.FileHandleResolver;
 import com.badlogic.gdx.assets.loaders.ParticleEffectLoader;
 import com.badlogic.gdx.assets.loaders.TextureLoader.TextureParameter;
 import com.badlogic.gdx.assets.loaders.resolvers.AbsoluteFileHandleResolver;
+import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
@@ -33,9 +35,56 @@ import java.util.Map;
 import static forge.assets.FSkin.getDefaultSkinFile;
 
 public class Assets implements Disposable {
+    /**
+     * Custom FileHandleResolver for iOS/Android that handles both:
+     * - Absolute paths (for writable cache/Documents files)
+     * - Relative paths (for read-only bundle resources)
+     */
+    private static class HybridFileHandleResolver implements FileHandleResolver {
+        private final AbsoluteFileHandleResolver absoluteResolver = new AbsoluteFileHandleResolver();
+        private final InternalFileHandleResolver internalResolver = new InternalFileHandleResolver();
+        private final boolean isIosOrAndroid;
+
+        public HybridFileHandleResolver() {
+            this.isIosOrAndroid = Gdx.app != null &&
+                (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android);
+        }
+
+        @Override
+        public FileHandle resolve(String fileName) {
+            if (isIosOrAndroid) {
+                // On iOS/Android: absolute paths use absoluteResolver, relative paths use internalResolver
+                if (fileName.startsWith("/")) {
+                    return absoluteResolver.resolve(fileName);
+                } else {
+                    return internalResolver.resolve(fileName);
+                }
+            } else {
+                // On Desktop: always use absolute paths
+                return absoluteResolver.resolve(fileName);
+            }
+        }
+    }
+
+    /**
+     * Helper method to get FileHandle that works on both iOS and Android.
+     * On iOS/Android, bundled resources must use internal() with relative paths.
+     * On Desktop, we can use absolute() with full paths.
+     */
+    private static FileHandle getFileHandle(String path) {
+        if (Gdx.app != null && (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android)) {
+            // On iOS/Android, strip the assets directory prefix and use internal()
+            String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
+            return Gdx.files.internal(relativePath);
+        } else {
+            // On Desktop, use absolute paths
+            return Gdx.files.absolute(path);
+        }
+    }
+
     private MemoryTrackingAssetManager manager;
     private HashMap<Integer, FSkinFont> fonts;
-    private HashMap<String, FImageComplex> cardArtCache;
+    private java.util.LinkedHashMap<String, FImageComplex> cardArtCache;
     private HashMap<String, FImage> avatarImages;
     private HashMap<String, FSkinImageInterface> manaImages;
     private HashMap<String, FSkinImageInterface> symbolLookup;
@@ -51,6 +100,7 @@ public class Assets implements Disposable {
     private ObjectMap<String, Texture> tmxMap;
     private Texture defaultImage, dummy;
     private TextureParameter textureParameter;
+    private TextureParameter cardTextureParameter;
     private ObjectMap<String, Font> textrafonts;
     private int cFB = 0, cFBVal = 0, cTM = 0, cTMVal = 0, cSF = 0, cSFVal = 0, cCF = 0, cCFVal = 0;
     private Texture holofoil;
@@ -143,8 +193,12 @@ public class Assets implements Disposable {
     }
 
     public MemoryTrackingAssetManager manager() {
-        if (manager == null)
-            manager = new MemoryTrackingAssetManager(new AbsoluteFileHandleResolver());
+        if (manager == null) {
+            // Use HybridFileHandleResolver that intelligently handles both:
+            // - Absolute paths (for writable cache/Documents files)
+            // - Relative paths (for read-only bundle resources)
+            manager = new MemoryTrackingAssetManager(new HybridFileHandleResolver());
+        }
         return manager;
     }
 
@@ -154,9 +208,16 @@ public class Assets implements Disposable {
         return fonts;
     }
 
-    public HashMap<String, FImageComplex> cardArtCache() {
+    public java.util.LinkedHashMap<String, FImageComplex> cardArtCache() {
+        // LRU-capped: card art entries otherwise accumulate unboundedly over a
+        // long session (memory hygiene on RAM-constrained devices)
         if (cardArtCache == null)
-            cardArtCache = new HashMap<>();
+            cardArtCache = new java.util.LinkedHashMap<String, FImageComplex>(100, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(java.util.Map.Entry<String, FImageComplex> eldest) {
+                    return size() > 100;
+                }
+            };
         return cardArtCache;
     }
 
@@ -261,6 +322,25 @@ public class Assets implements Disposable {
         return textureParameter;
     }
 
+    // Card images are opaque, so load the bundled (AssetManager) card path as RGB565 (half the RGBA8888
+    // footprint) with no mipmaps (cards are drawn ~1:1). Separate from getTextureFilter() so UI textures that
+    // need alpha/mipmaps are unaffected. Mirrors the RGB565 downscale already applied to the downloaded path.
+    public TextureParameter getCardTextureFilter() {
+        if (cardTextureParameter == null) {
+            cardTextureParameter = new TextureParameter();
+            cardTextureParameter.format = Pixmap.Format.RGB565;
+            cardTextureParameter.genMipMaps = false;
+        }
+        if (Forge.isTextureFilteringEnabled()) {
+            cardTextureParameter.minFilter = Texture.TextureFilter.Linear;
+            cardTextureParameter.magFilter = Texture.TextureFilter.Linear;
+        } else {
+            cardTextureParameter.minFilter = Texture.TextureFilter.Nearest;
+            cardTextureParameter.magFilter = Texture.TextureFilter.Nearest;
+        }
+        return cardTextureParameter;
+    }
+
     public Texture getTexture(FileHandle file) {
         return getTexture(file, true);
     }
@@ -269,6 +349,76 @@ public class Assets implements Disposable {
         return getTexture(file, false, required);
     }
 
+    /**
+     * iOS fix: Swap red and blue color channels in a Pixmap.
+     * iOS/Metal can interpret PNG color channels differently, causing red to appear blue.
+     * This method swaps R and B channels to correct the display.
+     */
+    public static void swapRedBlueChannels(Pixmap pixmap) {
+        if (pixmap == null) return;
+
+        int width = pixmap.getWidth();
+        int height = pixmap.getHeight();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixel = pixmap.getPixel(x, y);
+                // RGBA8888 format: pixel = (R << 24) | (G << 16) | (B << 8) | A
+                int r = (pixel >> 24) & 0xFF;
+                int g = (pixel >> 16) & 0xFF;
+                int b = (pixel >> 8) & 0xFF;
+                int a = pixel & 0xFF;
+                // Swap R and B
+                int swapped = (b << 24) | (g << 16) | (r << 8) | a;
+                pixmap.drawPixel(x, y, swapped);
+            }
+        }
+    }
+
+    /**
+     * iOS fix: Create a texture from a file with R/B channel swap for iOS.
+     * Use this for sprite sheets that display with incorrect colors on iOS.
+     */
+    public Texture getTextureWithColorFix(FileHandle file) {
+        if (file == null || !file.exists()) {
+            return null;
+        }
+
+        // Check if we need to apply the iOS color fix
+        boolean needsColorFix = Gdx.app != null && Gdx.app.getType() == ApplicationType.iOS;
+
+        if (needsColorFix) {
+            Pixmap pixmap = new Pixmap(file);
+            swapRedBlueChannels(pixmap);
+            Texture texture = new Texture(pixmap);
+            // Keep pixmap in cache to prevent disposal issues on iOS
+            colorFixedPixmaps.put(texture, pixmap);
+            return texture;
+        } else {
+            return new Texture(file);
+        }
+    }
+
+    // Cache for color-fixed pixmaps to prevent disposal on iOS (LRU capped)
+    private final Map<Texture, Pixmap> colorFixedPixmaps = new java.util.LinkedHashMap<Texture, Pixmap>(100, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<Texture, Pixmap> eldest) {
+            if (size() > 100) {
+                try { eldest.getValue().dispose(); } catch (Exception ignored) {}
+                return true;
+            }
+            return false;
+        }
+    };
+
+    // Cache for mapping color-fixed textures to their file paths
+    private final Map<Texture, String> colorFixedTexturePaths = new java.util.LinkedHashMap<Texture, String>(100, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<Texture, String> eldest) {
+            return size() > 100;
+        }
+    };
+
     public Texture getTexture(FileHandle file, boolean is2D, boolean required) {
         if (file == null || !file.exists()) {
             if (!required)
@@ -276,6 +426,24 @@ public class Assets implements Disposable {
             System.err.println("Failed to load: " + file + "!. Creating dummy texture.");
             return getDummy();
         }
+
+        // iOS fix: Apply color channel swap for mana icons sprite sheet
+        // iOS/Metal interprets PNG color channels differently, causing red to appear blue
+        if (Gdx.app != null && Gdx.app.getType() == ApplicationType.iOS &&
+            file.name().equals(ForgeConstants.SPRITE_MANAICONS_FILE)) {
+            // Check cache first
+            for (Map.Entry<Texture, String> entry : colorFixedTexturePaths.entrySet()) {
+                if (file.path().equals(entry.getValue())) {
+                    return entry.getKey();
+                }
+            }
+            Texture fixed = getTextureWithColorFix(file);
+            if (fixed != null) {
+                colorFixedTexturePaths.put(fixed, file.path());
+                return fixed;
+            }
+        }
+
         //internal path can be inside apk or jar..
         if (!FileType.Absolute.equals(file.type()) || file.path().contains("fallback_skin")) {
             Texture f = fallback_skins().get(file.path());
@@ -313,7 +481,9 @@ public class Assets implements Disposable {
 
     public Texture getDefaultImage() {
         if (defaultImage == null) {
-            FileHandle blankImage = Gdx.files.absolute(ForgeConstants.NO_CARD_FILE);
+            // iOS/Android: bundled resources need internal() relative paths;
+            // the hybrid resolver then routes them correctly in the manager
+            FileHandle blankImage = getFileHandle(ForgeConstants.NO_CARD_FILE);
             if (blankImage.exists()) {
                 defaultImage = manager().get(blankImage.path(), Texture.class, false);
                 if (defaultImage != null)
@@ -337,6 +507,21 @@ public class Assets implements Disposable {
         try {
             if (file == null || !file.exists())
                 return;
+
+            // iOS fix: For mana icons, use color-fixed loading instead of AssetManager
+            // This ensures the R/B channel swap is applied
+            if (Gdx.app != null && Gdx.app.getType() == ApplicationType.iOS &&
+                file.name().equals(ForgeConstants.SPRITE_MANAICONS_FILE)) {
+                // Pre-load with color fix - getTexture() will use this cached version
+                if (!colorFixedTexturePaths.containsValue(file.path())) {
+                    Texture fixed = getTextureWithColorFix(file);
+                    if (fixed != null) {
+                        colorFixedTexturePaths.put(fixed, file.path());
+                    }
+                }
+                return; // Don't load via AssetManager
+            }
+
             if (!FileType.Absolute.equals(file.type()))
                 return;
             manager().load(file.path(), Texture.class, parameter);
