@@ -66,13 +66,24 @@ M2="$HOME/.m2/repository"
 SETTINGS="$ROOT/.mvn/local-settings.xml"
 CP_FILE="$JV/ios-classpath.txt"
 
-# machine/developer-specific settings live in the untracked repo-root .env
+# machine/developer-specific settings live in the untracked repo-root .env;
+# explicitly exported environment variables take precedence over .env values
+# (e.g. SIM_UDID=<other-sim> pipeline/ios-pipeline.sh sim)
+_pre_APP_ID="$APP_ID"; _pre_APP_EXEC="$APP_EXEC"; _pre_SIM_UDID="$SIM_UDID"
+_pre_IPAD_UDID="$IPAD_UDID"; _pre_SIGN_ID="$SIGN_ID"; _pre_PROFILE="$PROFILE"; _pre_TEAM_ID="$TEAM_ID"
 if [ -f "$ROOT/.env" ]; then
     set -a
     # shellcheck disable=SC1091
     . "$ROOT/.env"
     set +a
 fi
+[ -n "$_pre_APP_ID" ]    && APP_ID="$_pre_APP_ID"
+[ -n "$_pre_APP_EXEC" ]  && APP_EXEC="$_pre_APP_EXEC"
+[ -n "$_pre_SIM_UDID" ]  && SIM_UDID="$_pre_SIM_UDID"
+[ -n "$_pre_IPAD_UDID" ] && IPAD_UDID="$_pre_IPAD_UDID"
+[ -n "$_pre_SIGN_ID" ]   && SIGN_ID="$_pre_SIGN_ID"
+[ -n "$_pre_PROFILE" ]   && PROFILE="$_pre_PROFILE"
+[ -n "$_pre_TEAM_ID" ]   && TEAM_ID="$_pre_TEAM_ID"
 
 # app identity: robovm.properties (untracked) is generated from the tracked
 # template using YOUR bundle identifier (APP_ID from .env / environment)

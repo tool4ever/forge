@@ -135,8 +135,28 @@
             <version>1.13.5</version>
         </dependency>
         <dependency>
+            <!-- iOS backend for gdx-controllers-core (forge-gui-mobile dep):
+                 adventure mode calls Controllers.addListener, which reflectively
+                 instantiates com.badlogic.gdx.controllers.IosControllerManager —
+                 without this jar adventure mode dies at the splash screen with
+                 ClassNotFoundException (also forceLinked in robovm.xml) -->
+            <groupId>com.badlogicgames.gdx-controllers</groupId>
+            <artifactId>gdx-controllers-ios</artifactId>
+            <version>2.2.4</version>
+        </dependency>
+        <dependency>
             <groupId>com.badlogicgames.gdx</groupId>
             <artifactId>gdx-platform</artifactId>
+            <version>1.13.5</version>
+            <classifier>natives-ios</classifier>
+        </dependency>
+        <dependency>
+            <!-- adventure mode uses Box2D physics; without the iOS natives it
+                 dies at the splash with UnsatisfiedLinkError: World.newWorld.
+                 The jar embeds META-INF/robovm/ios/ (xcframework + config) that
+                 RoboVM merges automatically -->
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-box2d-platform</artifactId>
             <version>1.13.5</version>
             <classifier>natives-ios</classifier>
         </dependency>

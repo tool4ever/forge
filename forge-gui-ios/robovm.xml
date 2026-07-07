@@ -57,6 +57,9 @@
     <pattern>org.apache.xalan.processor.TransformerFactoryImpl</pattern>
     <pattern>java.util.logging.**</pattern>
     <pattern>com.badlogic.gdx.**</pattern>
+    <!-- adventure ui_skin.json references TenPatchDrawable by NAME (libGDX skin
+         JSON deserialization) — invisible to RoboVM's reachability analysis -->
+    <pattern>com.ray3k.tenpatch.**</pattern>
     <!-- XStream serialization support -->
     <pattern>com.thoughtworks.xstream.**</pattern>
     <pattern>java.io.ObjectInputStream</pattern>
@@ -120,5 +123,7 @@
     <framework>OpenAL</framework>
     <framework>AudioToolbox</framework>
     <framework>AVFoundation</framework>
+    <!-- gdx-controllers-ios (adventure mode gamepad support) uses GCController -->
+    <framework>GameController</framework>
   </frameworks>
 </config>
