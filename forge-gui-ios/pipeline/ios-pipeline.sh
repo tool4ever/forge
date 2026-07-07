@@ -263,8 +263,17 @@ classpath() {
     java -cp "$TOOLS_CP" MobiVmBridge --rules "$PIPE/bridge.cfg" --index "$INDEX" \
         "${BRIDGE_ARGS[@]}" > "$WORK/bridge-report.txt" 2>&1 || true
     head -2 "$WORK/bridge-report.txt"
-    # bundle MissingStubError (lives in the CLI jar, referenced by stubs)
-    (cd "$WORK" && unzip -oq "$JVMDG_JAR" 'xyz/wagyourtail/jvmdg/exc/*' \
+    # The downgradeApi output has the runtime API stubs (jXX/stub/*) but NOT the
+    # jvmdg runtime-support classes those stubs call: exc/* (MissingStubError) and
+    # util/* (Utils, Function, Pair, IOFunction, ...). Missing util/* crashed
+    # online hosting (NetworkLogWriter -> a stub -> jvmdg/util/Utils
+    # NoClassDefFoundError). Pull both from the CLI jar (they're Java-7 bytecode,
+    # no java-8-gap APIs, so MobiVM-safe raw). NOT version/ or runtime/: those are
+    # the runtime-downgrader machinery, which drags in shade/asm (~850KB) and is
+    # never used in static-downgrade mode.
+    (cd "$WORK" && unzip -oq "$JVMDG_JAR" \
+        'xyz/wagyourtail/jvmdg/exc/*' \
+        'xyz/wagyourtail/jvmdg/util/*' \
       && jar -uf out/jvmdg-java-api-mobivm.jar xyz && rm -rf xyz)
 
     echo "=== [7/8] overwrite transformed jars in clone + install supplies ==="
