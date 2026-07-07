@@ -504,9 +504,18 @@ public class Assets implements Disposable {
         }
         Music music = manager().get(file.path(), Music.class, false);
         if (music == null) {
-            manager().load(file.path(), Music.class);
-            manager().finishLoadingAsset(file.path());
-            music = manager().get(file.path(), Music.class);
+            // A load failure (unsupported/corrupt file, or audio unavailable) must
+            // not propagate: getMusic is called synchronously from the render loop
+            // (adventure dialog voice), where an uncaught exception kills the app.
+            // Callers already treat null as "no audio".
+            try {
+                manager().load(file.path(), Music.class);
+                manager().finishLoadingAsset(file.path());
+                music = manager().get(file.path(), Music.class);
+            } catch (Exception e) {
+                System.err.println("Failed to load music " + file.path() + ": " + e.getMessage());
+                return null;
+            }
         }
         return music;
     }

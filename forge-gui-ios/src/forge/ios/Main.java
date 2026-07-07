@@ -237,7 +237,7 @@ public class Main extends IOSApplication.Delegate {
             final IOSApplicationConfiguration config = new IOSApplicationConfiguration();
             config.useAccelerometer = false;
             config.useCompass = false;
-            config.useAudio = false;  // Disable audio to avoid OpenAL initialization crash
+            config.useAudio = true;  // ObjectAL/OpenAL audio (music + SFX); see IOSAdapter.isSupportedAudioFormat
             config.preferredFramesPerSecond = 60;  // Smooth 60 FPS rendering
             config.preventScreenDimming = true;  // Keep screen on during gameplay
 
@@ -469,9 +469,18 @@ public class Main extends IOSApplication.Delegate {
 
         @Override
         public boolean isSupportedAudioFormat(java.io.File file) {
-            // audio is disabled on iOS (config.useAudio=false); also avoids the
-            // interface default whose Set.of field doesn't initialize on MobiVM
-            return false;
+            // Implemented directly (not via the interface default) for two reasons:
+            // the default uses a Set.of interface-static field whose <clinit>
+            // doesn't run on MobiVM (NPE), and iOS decodes a different format set.
+            // All Forge audio ships as .mp3; ObjectAL decodes mp3/m4a/aac/wav/caf
+            // /aiff via AudioToolbox (SFX) and AVAudioPlayer (music). iOS has no
+            // native Ogg Vorbis decoder, so .ogg is intentionally excluded.
+            if (file == null) {
+                return false;
+            }
+            String path = file.getPath().toLowerCase();
+            return path.endsWith(".mp3") || path.endsWith(".m4a") || path.endsWith(".aac")
+                    || path.endsWith(".wav") || path.endsWith(".caf") || path.endsWith(".aiff");
         }
 
         @Override
