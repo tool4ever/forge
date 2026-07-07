@@ -675,14 +675,14 @@ public final class FServerManager implements IHasForgeLog {
     }
 
     private void mapNatPort() {
-        final String localAddress = getLocalAddress();
-        final PortMapping portMapping = new PortMapping(port, localAddress, PortMapping.Protocol.TCP, "Forge");
-        // Shutdown existing UPnP service if already running
-        if (upnpService != null) {
-            upnpService.shutdown();
-        }
-
         try {
+            final String localAddress = getLocalAddress();
+            final PortMapping portMapping = new PortMapping(port, localAddress, PortMapping.Protocol.TCP, "Forge");
+            // Shutdown existing UPnP service if already running
+            if (upnpService != null) {
+                upnpService.shutdown();
+            }
+
             // Create a new UPnP service instance
             upnpService = new UpnpServiceImpl(GuiBase.getInterface().getUpnpPlatformService());
             upnpService.startup();
@@ -702,8 +702,13 @@ public final class FServerManager implements IHasForgeLog {
                     }
                 }
             }, 5000);
-        } catch (Exception e) {
-            netLog.error(e, "UPnP mapping error");
+        } catch (Throwable e) {
+            // UPnP port mapping is optional (it makes the host reachable from the
+            // internet; LAN/direct hosting works without it). jupnp is unavailable
+            // on iOS/MobiVM (provided scope, no platform UPnP service), so the
+            // PortMapping/UpnpService classes fail to load - catch Throwable so
+            // NoClassDefFoundError degrades gracefully instead of killing hosting.
+            netLog.error(e, "UPnP mapping unavailable");
         }
     }
 
