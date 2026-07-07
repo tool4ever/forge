@@ -238,6 +238,11 @@ public class Main extends IOSApplication.Delegate {
             config.useAccelerometer = false;
             config.useCompass = false;
             config.useAudio = true;  // ObjectAL/OpenAL audio (music + SFX); see IOSAdapter.isSupportedAudioFormat
+            // Play game audio even when the device ringer/silent switch is on
+            // (ObjectAL honorSilentSwitch = !overrideRingerSwitch). Without this,
+            // there is NO sound on a device in silent mode — the simulator ignores
+            // the silent switch, which masked it. Standard behavior for a game.
+            config.overrideRingerSwitch = true;
             config.preferredFramesPerSecond = 60;  // Smooth 60 FPS rendering
             config.preventScreenDimming = true;  // Keep screen on during gameplay
 
