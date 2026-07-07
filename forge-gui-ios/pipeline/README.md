@@ -47,6 +47,23 @@ env-overridable — see the header of `ios-pipeline.sh`.
   construction); they participate in the resolution index only.
 - The RoboVM AOT cache is content-hashed — `SKIP_CACHE_CLEAR=1` is safe and
   saves ~15 min per build.
+- RoboVM's AOT lambda plugin silently drops `altMetafactory`'s
+  `FLAG_SERIALIZABLE` (it only implements `FLAG_MARKERS`/`FLAG_BRIDGES`), so a
+  serializable lambda — `(Supplier<T> & Serializable) X::new`, ECJ-compiled
+  jgrapht is full of them — comes out NOT implementing `Serializable` and the
+  compiler-emitted `checkcast java/io/Serializable` throws at runtime. The
+  bridge converts the ignored bit into an explicit `FLAG_MARKERS` +
+  `java/io/Serializable` marker, which RoboVM honors; the audit fails on any
+  site that reaches the final jars without the marker. CAVEAT: this restores
+  type-compatibility only — RoboVM generates no `writeReplace`, so actually
+  Java-serializing such a lambda still throws `NotSerializableException`
+  (nothing does that today).
+- `META-INF/services/` entries are class names in disguise: the bridge remaps
+  both the entry name and the impl lines through the type rules (miss this
+  and e.g. the relocated ThreeTen zone-rules provider never registers —
+  `java.time` works until the first `ZoneId.systemDefault()`, then throws
+  "No time-zone data files registered"). The audit flags any services entry
+  naming a class that exists nowhere on the final classpath.
 
 ## Bundle identifier (bring your own)
 

@@ -5,15 +5,18 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,6 +73,8 @@ public class MobiVmBridge {
     static final Map<String, List<String>> UNRESOLVED = new TreeMap<>();
     static int redirects = 0;
     static int handleRedirects = 0;
+    static int serializableLambdaFixes = 0;
+    static int servicesRemapped = 0;
 
     public static void main(String[] args) throws Exception {
         List<String> ins = new ArrayList<>();
@@ -92,7 +97,8 @@ public class MobiVmBridge {
             transform(Paths.get(ins.get(i)), Paths.get(outs.get(i)));
         }
         System.out.println("BRIDGE: " + redirects + " member redirects, " + handleRedirects
-                + " handle redirects across " + ins.size() + " jar(s)");
+                + " handle redirects, " + serializableLambdaFixes + " serializable-lambda markers, "
+                + servicesRemapped + " services entries remapped across " + ins.size() + " jar(s)");
         if (!UNRESOLVED.isEmpty()) {
             System.out.println("BRIDGE-UNRESOLVED (" + UNRESOLVED.size() + ") — no rule, left as-is:");
             for (Map.Entry<String, List<String>> e : UNRESOLVED.entrySet()) {
@@ -242,6 +248,33 @@ public class MobiVmBridge {
                         String cls = new ClassReader(rewritten).getClassName();
                         zout.putNextEntry(new ZipEntry(cls + ".class"));
                         zout.write(rewritten);
+                    } else if (n.startsWith("META-INF/services/") && n.length() > "META-INF/services/".length()) {
+                        // ServiceLoader registrations: the entry NAME is the service
+                        // interface and each content line is an impl class — both are
+                        // dotted class names that must track the type-remap rules.
+                        // (Miss this and e.g. the relocated ThreeTen ZoneRulesProvider
+                        // never registers: "No time-zone data files registered".)
+                        String svc = n.substring("META-INF/services/".length());
+                        String newSvc = TYPE_REMAPPER.map(svc.replace('.', '/')).replace('/', '.');
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                        byte[] buf = new byte[65536];
+                        int r;
+                        while ((r = is.read(buf)) > 0) bos.write(buf, 0, r);
+                        String content = new String(bos.toByteArray(), StandardCharsets.UTF_8);
+                        StringBuilder sb = new StringBuilder();
+                        for (String line : content.split("\n", -1)) {
+                            String t = line.trim();
+                            if (!t.isEmpty() && !t.startsWith("#")) {
+                                t = TYPE_REMAPPER.map(t.replace('.', '/')).replace('/', '.');
+                            }
+                            sb.append(t).append('\n');
+                        }
+                        String newContent = sb.toString();
+                        if (!newSvc.equals(svc) || !newContent.equals(content)) {
+                            servicesRemapped++;
+                        }
+                        zout.putNextEntry(new ZipEntry("META-INF/services/" + newSvc));
+                        zout.write(newContent.getBytes(StandardCharsets.UTF_8));
                     } else {
                         zout.putNextEntry(new ZipEntry(e.getName()));
                         byte[] buf = new byte[65536];
@@ -262,6 +295,53 @@ public class MobiVmBridge {
         ClassVisitor redirect = new MemberRedirector(remap, cr.getClassName());
         cr.accept(redirect, ClassReader.EXPAND_FRAMES);
         return cw.toByteArray();
+    }
+
+    /**
+     * RoboVM's AOT lambda plugin (LambdaPlugin/LambdaClassGenerator) implements
+     * only FLAG_MARKERS(2) and FLAG_BRIDGES(4) of LambdaMetafactory.altMetafactory
+     * — FLAG_SERIALIZABLE(1) is silently discarded, so a serializable lambda
+     * comes out NOT implementing Serializable and the compiler-emitted
+     * `checkcast java/io/Serializable` throws at runtime (first hit: jgrapht
+     * SupplierUtil.<clinit> via GameAction.findStaticAbilityToApply — killed
+     * every game). Convert the ignored bit into an explicit marker interface,
+     * which RoboVM demonstrably honors. Bit 1 is left set: RoboVM ignores it
+     * either way and flags=7 + explicit marker is the (spec-valid) historical
+     * ECJ encoding, so the transformed jars still run on real JVMs.
+     *
+     * Arg layout: [samMT, implMH, instMT, flags,
+     *              (markerCount, markers...)?, (bridgeCount, bridges...)?]
+     *
+     * Note: this runs BEFORE the ClassRemapper in the visitor chain, so a
+     * marker matching a type rule would be remapped downstream — that would
+     * be correct behavior, not a bug.
+     */
+    static Object[] fixSerializableLambda(Handle bsm, Object[] args) {
+        if (!"java/lang/invoke/LambdaMetafactory".equals(bsm.getOwner())
+                || !"altMetafactory".equals(bsm.getName())
+                || args.length < 4 || !(args[3] instanceof Integer)) {
+            return args;
+        }
+        int flags = (Integer) args[3];
+        if ((flags & 1) == 0) { // FLAG_SERIALIZABLE not set
+            return args;
+        }
+        Type ser = Type.getObjectType("java/io/Serializable");
+        List<Object> a = new ArrayList<>(Arrays.asList(args));
+        if ((flags & 2) != 0) { // FLAG_MARKERS present (javac-style encoding)
+            int mc = (Integer) a.get(4);
+            if (a.subList(5, 5 + mc).contains(ser)) {
+                return args; // already explicit
+            }
+            a.set(4, mc + 1);
+            a.add(5 + mc, ser);
+        } else { // ECJ-style: bit 1 only — splice markers before the bridge payload
+            a.set(3, flags | 2);
+            a.add(4, 1);
+            a.add(5, ser);
+        }
+        serializableLambdaFixes++;
+        return a.toArray();
     }
 
     static class MemberRedirector extends ClassVisitor {
@@ -341,7 +421,8 @@ public class MobiVmBridge {
                         }
                         newArgs[i] = a;
                     }
-                    super.visitInvokeDynamicInsn(name, desc, bsm, newArgs);
+                    Object[] outArgs = fixSerializableLambda(bsm, newArgs);
+                    super.visitInvokeDynamicInsn(name, desc, bsm, outArgs);
                 }
             };
         }

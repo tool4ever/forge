@@ -215,6 +215,11 @@ classpath() {
             # robovm + ALL badlogicgames (libGDX) jars are MobiVM-clean by
             # construction; transforming them is unnecessary risk
             */robovm-*|*natives*|*com/badlogicgames/*) KEEP+=("$j") ;;
+            # compile-time placeholder only: step [5/8] builds the real
+            # (relocated) supply and step [7/8] installs it over this GAV in
+            # the clone — transforming/scanning the placeholder just feeds the
+            # audit stale org.threeten classes and a dead services entry
+            */forge/stubs/java-time-supply/*) ;;
             *) TRANSFORM+=("$j") ;;
         esac
     done <<< "$ALL_JARS"
