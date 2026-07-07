@@ -4,6 +4,14 @@
   <os>ios</os>
   <arch>arm64</arch>
   <resources>
+    <!-- skipPngCrush: RoboVM runs Apple's `pngcrush -iphone` on every bundled .png for
+         DEVICE builds (not simulator), converting them to CgBI format = BGRA byte order +
+         premultiplied alpha. libGDX decodes with stb_image, which does NOT un-swap CgBI,
+         so every blue skin sprite/logo renders yellow on a physical device (and pixel-
+         sampled FSkinColor theme colors are corrupted the same way). These PNGs are only
+         ever read by libGDX, never by UIKit, so crushing buys nothing - skip it.
+         NOTE: skipPngCrush is only honored here, per-resource; the robovm-maven-plugin
+         <configuration> has no such parameter (it gets silently ignored there). -->
     <resource>
       <directory>../forge-gui</directory>
       <includes>
@@ -13,10 +21,13 @@
         <!-- Exclude individual card .txt files - they are bundled in cardsfolder.zip for faster installs -->
         <exclude>res/cardsfolder/*/*.txt</exclude>
       </excludes>
+      <skipPngCrush>true</skipPngCrush>
     </resource>
     <resource>
       <directory>res</directory>
+      <skipPngCrush>true</skipPngCrush>
     </resource>
+    <!-- Icon*.png are consumed by SpringBoard, not libGDX - CgBI is fine there -->
     <resource>
       <directory>.</directory>
       <includes>
@@ -26,6 +37,7 @@
     <resource>
       <directory>fallback_skin</directory>
       <targetPath>fallback_skin</targetPath>
+      <skipPngCrush>true</skipPngCrush>
     </resource>
   </resources>
   <target>ios</target>
