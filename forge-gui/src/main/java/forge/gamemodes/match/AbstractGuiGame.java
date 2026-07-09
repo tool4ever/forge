@@ -375,7 +375,9 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         return selectionMax;
     }
 
-    private final Set<CardView> weaklySelectableCards = Sets.newHashSet();
+    /** Weighted membership: duplicates in the pushed iterable accumulate counts, so a card's
+     *  count expresses how "strong" its selectability is (1 = actionable, 2 = Auto would tap it). */
+    private final Multiset<CardView> weaklySelectableCards = HashMultiset.create();
 
     public void setWeaklySelectable(final Iterable<CardView> cards) {
         weaklySelectableCards.clear();
@@ -390,6 +392,10 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
 
     public boolean isWeaklySelectable(final CardView card) {
         return weaklySelectableCards.contains(card);
+    }
+
+    public int getWeakSelectableStrength(final CardView card) {
+        return weaklySelectableCards.count(card);
     }
 
     public boolean isGamePaused() {
