@@ -266,6 +266,14 @@ public class Main extends IOSApplication.Delegate {
             final ApplicationListener app = Forge.getApp(null, new IOSClipboard(), new IOSAdapter(), assetsDir, false, isTablet, 0);
             IOSApplication iosApp = new IOSApplication(app, config);
 
+            // NOTE: sound effects now play through libGDX Music (AVAudioPlayer) on iOS
+            // (see forge.sound.AudioClip), NOT OpenAL. The OpenAL effects engine that
+            // libGDX auto-initializes is therefore unused; it is permanently suspended
+            // in didBecomeActive so its render cycle can't beat against the AVAudioPlayer
+            // music. The old world-gen sfxEngineControl toggle is intentionally NOT
+            // registered anymore - un-suspending OpenAL would reintroduce the beat, and
+            // AVAudioPlayer effects don't suffer the world-gen mixer-starvation static.
+
             // Re-apply System.out/err redirection - IOSApplication replaces them with FoundationLogPrintStream
             // which doesn't appear in Console.app on iOS 26+
             try {
@@ -305,6 +313,35 @@ public class Main extends IOSApplication.Delegate {
             });
         } catch (Throwable t) {
             log("could not post memory-warning flush: " + t.getMessage());
+        }
+    }
+
+    @Override
+    public void didBecomeActive(UIApplication application) {
+        // super MUST run first so ObjectAL's audio-session interruption recovery works.
+        super.didBecomeActive(application);
+        // Permanently suspend the OpenAL effects engine. Sound effects now play through
+        // libGDX Music (AVAudioPlayer) on iOS (see forge.sound.AudioClip), so OpenAL is
+        // unused - but libGDX auto-initializes it, and an ACTIVE OpenAL 3D-mixer render
+        // cycle beats against the AVAudioPlayer music/effects (mediaserverd) clock,
+        // producing the slow periodic music crackle. Suspending it (alcSuspendContext)
+        // stops that render cycle so everything is one clock domain = no beat. Re-applied
+        // on every foreground; the first didBecomeActive fires at launch after the audio
+        // device is open. Music (a separate AVAudioPlayer subsystem) is unaffected -
+        // verified previously: suspending OpenAL never stopped the background music.
+        try {
+            OpenALManager mgr = OpenALManager.sharedInstance();
+            String diag;
+            if (mgr != null) {
+                mgr.setManuallySuspended(true);
+                diag = "OpenAL effects engine suspended (manuallySuspended="
+                        + mgr.isManuallySuspended() + "); effects route via AVAudioPlayer";
+            } else {
+                diag = "OpenAL suspend SKIPPED (sharedInstance null)";
+            }
+            log(diag);
+        } catch (Throwable t) {
+            log("OpenAL suspend failed: " + t.getMessage());
         }
     }
 
