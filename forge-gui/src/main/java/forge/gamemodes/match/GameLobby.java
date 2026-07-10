@@ -577,6 +577,7 @@ public abstract class GameLobby implements IHasGameType {
         private boolean limitedMode;
         private String activeEventId;
         private boolean activeConformance;
+        private int maximumCommanderBracket = 5; // mirrors DECKGEN_MAXIMUM_COMMANDER_BRACKET default (off)
 
         public GameLobbyData() {
         }
@@ -604,6 +605,12 @@ public abstract class GameLobby implements IHasGameType {
         }
         public void setActiveConformance(final boolean conformance) {
             this.activeConformance = conformance;
+        }
+        public int getMaximumCommanderBracket() {
+            return maximumCommanderBracket;
+        }
+        public void setMaximumCommanderBracket(final int bracket) {
+            this.maximumCommanderBracket = bracket;
         }
     }
 }
