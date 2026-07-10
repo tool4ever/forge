@@ -35,7 +35,6 @@ import forge.gui.GuiBase;
 import forge.gui.interfaces.ILobbyView;
 import forge.interfaces.IPlayerChangeListener;
 import forge.localinstance.properties.ForgePreferences;
-import forge.util.SleeveArt;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.menu.FPopupMenu;
 import forge.model.FModel;
@@ -361,8 +360,6 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
         int pTwoIndex = playerPanels.get(1).getSleeveIndex();
 
         prefs.setPref(FPref.UI_SLEEVES, pOneIndex + "," + pTwoIndex);
-        prefs.setPref(FPref.UI_SLEEVE_ART_KEYS, SleeveArt.encode(playerPanels.get(0).getSleeveArtKey())
-                + "," + SleeveArt.encode(playerPanels.get(1).getSleeveArtKey()));
         prefs.save();
     }
 
@@ -641,7 +638,10 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
                 if (type != LobbySlotType.AI) {
                     panel.setPlayerName(slot.getName());
                     panel.setAvatarIndex(slot.getAvatarIndex());
-                    panel.setSleeve(slot.getSleeveIndex(), slot.getSleeveArtKey(), slot.getSleeveArtOffset());
+                    final Deck slotDeck = slot.getDeck();
+                    panel.setSleeve(slot.getSleeveIndex(),
+                            slotDeck == null ? "" : slotDeck.getSleeveArtKey(),
+                            slotDeck == null ? Deck.DEFAULT_SLEEVE_OFFSET : slotDeck.getSleeveArtOffset());
                 } else {
                     //AI: this one overrides the setplayername if blank
                     if (panel.getPlayerName().isEmpty())
@@ -649,8 +649,6 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
                     //AI: override settings if somehow player changes it for AI
                     slot.setAvatarIndex(panel.getAvatarIndex());
                     slot.setSleeveIndex(panel.getSleeveIndex());
-                    slot.setSleeveArtKey(panel.getSleeveArtKey());
-                    slot.setSleeveArtOffset(panel.getSleeveArtOffset());
                 }
                 panel.setTeam(slot.getTeam());
                 panel.setIsReady(slot.isReady());
@@ -796,6 +794,7 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
         }
 
         decks[playerIndex] = playerDeck;
+        playerPanels.get(playerIndex).refreshSleeveFromDeck(playerDeck);
         if (playerChangeListener != null) {
             playerChangeListener.update(playerIndex, UpdateLobbyPlayerEvent.deckUpdate(playerDeck));
             playerChangeListener.update(playerIndex, UpdateLobbyPlayerEvent.setDeckSchemePlaneVanguard(TextUtil.fastReplace(deckName," Generated Deck", ""), SchemeDeckName, PlanarDeckname, VanguardAvatar));
@@ -820,9 +819,10 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
         }
     }
 
-    void updateSleeveArt(final int index, final String key, final int offset) {
-        if (playerChangeListener != null) {
-            playerChangeListener.update(index, UpdateLobbyPlayerEvent.sleeveArtUpdate(key, offset));
+    // Re-broadcasts a deck whose card-art sleeve changed, so networked opponents pick up the new sleeve
+    void updateDeckSleeve(final int index, final Deck deck) {
+        if (playerChangeListener != null && deck != null) {
+            playerChangeListener.update(index, UpdateLobbyPlayerEvent.deckUpdate(deck));
         }
     }
 
@@ -897,8 +897,6 @@ public abstract class LobbyScreen extends LaunchScreen implements ILobbyView {
                 panel.getPlayerName(),
                 panel.getAvatarIndex(),
                 panel.getSleeveIndex(),
-                panel.getSleeveArtKey(),
-                panel.getSleeveArtOffset(),
                 panel.getTeam(),
                 panel.isArchenemy(),
                 panel.isDevMode(),

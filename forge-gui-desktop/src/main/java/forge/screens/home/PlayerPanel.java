@@ -25,6 +25,8 @@ import com.google.common.collect.ImmutableSet;
 import forge.ImageCache;
 import forge.Singletons;
 import forge.ai.AIOption;
+import forge.deck.Deck;
+import forge.deck.DeckProxy;
 import forge.deck.DeckSection;
 import forge.game.GameType;
 import forge.gamemodes.match.LobbySlot;
@@ -55,7 +57,6 @@ import forge.toolbox.FTextField;
 import forge.util.Localizer;
 import forge.util.MyRandom;
 import forge.util.NameGenerator;
-import forge.util.SleeveArt;
 import net.miginfocom.swing.MigLayout;
 
 @SuppressWarnings("serial")
@@ -74,7 +75,7 @@ public class PlayerPanel extends FPanel {
     private final FLabel sleeveLabel = new FLabel.Builder().opaque(true).hoverable(true).iconScaleFactor(0.99f).iconInBackground(true).build();
     private int avatarIndex, sleeveIndex;
     private String sleeveArtKey = "";
-    private int sleeveArtOffset = 500;
+    private int sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
 
     private final FTextField txtPlayerName = new FTextField.Builder().build();
     private FRadioButton radioHuman;
@@ -704,11 +705,9 @@ public class PlayerPanel extends FPanel {
 
     private void createSleeve() {
         final String[] currentPrefs = FModel.getPreferences().getPref(FPref.UI_SLEEVES).split(",");
-        final String[] artPrefs = FModel.getPreferences().getPref(FPref.UI_SLEEVE_ART_KEYS).split(",", -1);
-        final String artKey = index < artPrefs.length ? SleeveArt.decode(artPrefs[index]) : "";
-        final int artOffset = SleeveArt.offsetForKey(FModel.getPreferences().getPref(FPref.UI_SLEEVE_ART_LIBRARY), artKey);
         if (index < currentPrefs.length) {
-            setSleeve(Integer.parseInt(currentPrefs[index]), artKey, artOffset);
+            // card-art sleeve, if any, arrives via refreshSleeveFromDeck once a deck is selected
+            setSleeve(Integer.parseInt(currentPrefs[index]), "", Deck.DEFAULT_SLEEVE_OFFSET);
         } else {
             setRandomSleeve(false);
         }
@@ -725,8 +724,10 @@ public class PlayerPanel extends FPanel {
 
             if (sSel.getResultArtKey() != null) {
                 applyCardArtSleeve(sSel.getResultArtKey(), sSel.getResultOffset());
+                persistSleeveToDeck(sSel.getResultArtKey(), sSel.getResultOffset());
             } else if (sSel.getResultIndex() >= 0) {
                 setSleeveIndex(sSel.getResultIndex());
+                persistSleeveToDeck("", Deck.DEFAULT_SLEEVE_OFFSET);
             }
 
             if (index < 2) {
@@ -740,6 +741,7 @@ public class PlayerPanel extends FPanel {
             sleeveLabel.requestFocusInWindow();
 
             setRandomSleeve();
+            persistSleeveToDeck("", Deck.DEFAULT_SLEEVE_OFFSET);
 
             if (index < 2) {
                 lobby.updateSleevePrefs();
@@ -751,6 +753,41 @@ public class PlayerPanel extends FPanel {
         setSleeveArtKey(key);
         sleeveArtOffset = offset;
         showCardArtOnSleeveLabel(key);
+    }
+
+    /** Updates the sleeve display from a deck's stored card-art sleeve, or the built-in sleeve if it has none. */
+    public void refreshSleeveFromDeck(final Deck deck) {
+        final String artKey = deck == null ? "" : deck.getSleeveArtKey();
+        if (artKey != null && !artKey.isEmpty()) {
+            sleeveArtKey = artKey;
+            sleeveArtOffset = deck.getSleeveArtOffset();
+            showCardArtOnSleeveLabel(artKey);
+        } else {
+            sleeveArtKey = "";
+            sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
+            sleeveLabel.setIcon(FSkin.getSleeves().get(sleeveIndex));
+            sleeveLabel.repaintSelf();
+        }
+    }
+
+    // Writes the chosen sleeve onto the currently selected deck and saves it (no-op for read-only decks)
+    private void persistSleeveToDeck(final String key, final int offset) {
+        final FDeckChooser chooser = getDeckChooser();
+        if (chooser == null) {
+            return;
+        }
+        final DeckProxy proxy = chooser.getLstDecks().getSelectedItem();
+        if (proxy == null) {
+            return;
+        }
+        final Deck deck = proxy.getDeck();
+        if (deck == null) {
+            return;
+        }
+        deck.setSleeveArtKey(key);
+        deck.setSleeveArtOffset(offset);
+        proxy.saveDeck();
+        lobby.fireDeckSleeveChange(index, deck);
     }
 
     private void showCardArtOnSleeveLabel(final String key) {
@@ -830,21 +867,14 @@ public class PlayerPanel extends FPanel {
     public void setSleeveIndex(final int sleeveIndex0) {
         sleeveIndex = sleeveIndex0;
         sleeveArtKey = ""; // picking a built-in sleeve clears any card-art sleeve
-        sleeveArtOffset = 500;
+        sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
         final SkinImage icon = FSkin.getSleeves().get(sleeveIndex);
         sleeveLabel.setIcon(icon);
         sleeveLabel.repaintSelf();
     }
 
-    public String getSleeveArtKey() {
-        return sleeveArtKey == null ? "" : sleeveArtKey;
-    }
     public void setSleeveArtKey(final String key) {
         sleeveArtKey = key == null ? "" : key;
-    }
-
-    public int getSleeveArtOffset() {
-        return sleeveArtOffset;
     }
 
     /** Applies a sleeve from slot data: built-in index, then card-art key (with its icon) if present. */

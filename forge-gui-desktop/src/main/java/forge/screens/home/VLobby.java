@@ -34,7 +34,6 @@ import forge.localinstance.skin.FSkinProp;
 import forge.item.PaperCard;
 import forge.itemmanager.ItemManagerConfig;
 import forge.localinstance.properties.ForgePreferences;
-import forge.util.SleeveArt;
 import forge.localinstance.properties.ForgePreferences.FPref;
 import forge.model.FModel;
 import forge.toolbox.*;
@@ -407,7 +406,10 @@ public class VLobby implements ILobbyView {
                 panel.setType(type);
                 panel.setPlayerName(slot.getName());
                 panel.setAvatarIndex(slot.getAvatarIndex());
-                panel.setSleeve(slot.getSleeveIndex(), slot.getSleeveArtKey(), slot.getSleeveArtOffset());
+                final Deck slotDeck = slot.getDeck();
+                panel.setSleeve(slot.getSleeveIndex(),
+                        slotDeck == null ? "" : slotDeck.getSleeveArtKey(),
+                        slotDeck == null ? Deck.DEFAULT_SLEEVE_OFFSET : slotDeck.getSleeveArtOffset());
                 panel.setTeam(slot.getTeam());
                 panel.setIsReady(slot.isReady());
                 panel.setIsDevMode(slot.isDevMode());
@@ -538,8 +540,16 @@ public class VLobby implements ILobbyView {
             playerChangeListener.update(index, getSlot(index));
         }
     }
+    // Re-broadcasts a deck whose card-art sleeve changed, so networked opponents pick up the new sleeve
+    void fireDeckSleeveChange(final int index, final Deck deck) {
+        if (playerChangeListener != null && deck != null) {
+            playerChangeListener.update(index, UpdateLobbyPlayerEvent.deckUpdate(deck));
+        }
+    }
+
     private void fireDeckChangeListener(final int index, final Deck deck) {
         decks[index] = deck;
+        getPlayerPanel(index).refreshSleeveFromDeck(deck);
         if (playerChangeListener != null) {
             playerChangeListener.update(index, UpdateLobbyPlayerEvent.deckUpdate(deck));
         }
@@ -566,7 +576,7 @@ public class VLobby implements ILobbyView {
         final PlayerPanel panel = getPlayerPanel(index);
         return UpdateLobbyPlayerEvent.create(panel.getType(),
                 panel.getPlayerName(),
-                panel.getAvatarIndex(), panel.getSleeveIndex(), panel.getSleeveArtKey(), panel.getSleeveArtOffset(),
+                panel.getAvatarIndex(), panel.getSleeveIndex(),
                 panel.getTeam(), panel.isArchenemy(),
                 panel.isDevMode(),
                 panel.getAiOptions(),
@@ -1012,8 +1022,6 @@ public class VLobby implements ILobbyView {
         final int pTwoIndex = getPlayerPanel(1).getSleeveIndex();
 
         prefs.setPref(FPref.UI_SLEEVES, pOneIndex + "," + pTwoIndex);
-        prefs.setPref(FPref.UI_SLEEVE_ART_KEYS, SleeveArt.encode(getPlayerPanel(0).getSleeveArtKey())
-                + "," + SleeveArt.encode(getPlayerPanel(1).getSleeveArtKey()));
         prefs.save();
     }
 

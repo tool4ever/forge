@@ -70,7 +70,7 @@ public class PlayerPanel extends FContainer {
     private final FLabel sleeveLabel = new FLabel.Builder().opaque(true).iconScaleFactor(0.99f).selectable().alphaComposite(1).iconInBackground(true).build();
     private int avatarIndex, sleeveIndex;
     private String sleeveArtKey = "";
-    private int sleeveArtOffset = 500;
+    private int sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
     private final FTextField txtPlayerName = new FTextField(Forge.getLocalizer().getMessage("lblPlayerName"));
     private final FToggleSwitch humanAiSwitch;
     private final FToggleSwitch devModeSwitch;
@@ -510,7 +510,10 @@ public class PlayerPanel extends FContainer {
                 //update may edit in-case it changed as a result of the AI change
                 setMayEdit(screen.getLobby().mayEdit(index));
                 setAvatarIndex(slot.getAvatarIndex());
-                setSleeve(slot.getSleeveIndex(), slot.getSleeveArtKey(), slot.getSleeveArtOffset());
+                final Deck slotDeck = slot.getDeck();
+                setSleeve(slot.getSleeveIndex(),
+                        slotDeck == null ? "" : slotDeck.getSleeveArtKey(),
+                        slotDeck == null ? Deck.DEFAULT_SLEEVE_OFFSET : slotDeck.getSleeveArtOffset());
                 setPlayerName(slot.getName());
             }
         }
@@ -616,6 +619,7 @@ public class PlayerPanel extends FContainer {
                 }
                 SleeveSelector.show(getPlayerName(), sleeveIndex, screen.getUsedSleeves(), result -> {
                     setSleeveIndex(result);
+                    persistSleeveToDeck("", Deck.DEFAULT_SLEEVE_OFFSET);
 
                     if (index < 2) {
                         screen.updateSleeve(index, result);
@@ -661,9 +665,7 @@ public class PlayerPanel extends FContainer {
             FModel.getPreferences().setPref(ForgePreferences.FPref.UI_SLEEVE_ART_LIBRARY, SleeveArt.formatLibrary(library));
             FModel.getPreferences().save();
         }
-        if (index < 2) {
-            screen.updateSleeveArt(index, key, offset);
-        }
+        persistSleeveToDeck(key, offset);
         if (allowNetworking) {
             screen.firePlayerChangeListener(index);
         }
@@ -959,16 +961,48 @@ public class PlayerPanel extends FContainer {
 
     private void createSleeve() {
         String[] currentPrefs = prefs.getPref(FPref.UI_SLEEVES).split(",");
-        String[] artPrefs = prefs.getPref(FPref.UI_SLEEVE_ART_KEYS).split(",", -1);
-        String artKey = index < artPrefs.length ? SleeveArt.decode(artPrefs[index]) : "";
-        int artOffset = SleeveArt.offsetForKey(prefs.getPref(FPref.UI_SLEEVE_ART_LIBRARY), artKey);
         if (index < currentPrefs.length) {
-            setSleeve(Integer.parseInt(currentPrefs[index]), artKey, artOffset);
+            // card-art sleeve, if any, arrives via refreshSleeveFromDeck once a deck is selected
+            setSleeve(Integer.parseInt(currentPrefs[index]), "", Deck.DEFAULT_SLEEVE_OFFSET);
         }
         else {
             setSleeveIndex(SleeveSelector.getRandomSleeves(screen.getUsedSleeves()));
         }
         sleeveLabel.setCommand(sleeveCommand);
+    }
+
+    /** Updates the sleeve display from a deck's stored card-art sleeve, or the built-in sleeve if it has none. */
+    public void refreshSleeveFromDeck(final Deck deck) {
+        final String artKey = deck == null ? "" : deck.getSleeveArtKey();
+        if (artKey != null && !artKey.isEmpty()) {
+            sleeveArtKey = artKey;
+            sleeveArtOffset = deck.getSleeveArtOffset();
+            sleeveLabel.setIcon(new CardSleeveImage(artKey, sleeveArtOffset));
+        } else {
+            sleeveArtKey = "";
+            sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
+            if (sleeveIndex != -1) {
+                sleeveLabel.setIcon(new FTextureRegionImage(FSkin.getSleeves().get(sleeveIndex)));
+            }
+        }
+    }
+
+    // Writes the chosen sleeve onto the currently selected deck and saves it (no-op for read-only decks)
+    private void persistSleeveToDeck(final String key, final int offset) {
+        final DeckProxy proxy = getDeckChooser().getLstDecks().getSelectedItem();
+        if (proxy == null) {
+            return;
+        }
+        final Deck deck = proxy.getDeck();
+        if (deck == null) {
+            return;
+        }
+        deck.setSleeveArtKey(key);
+        deck.setSleeveArtOffset(offset);
+        proxy.saveDeck();
+        if (allowNetworking) {
+            screen.updateDeckSleeve(index, deck);
+        }
     }
 
     public void setAvatarIndex(int newAvatarIndex) {
@@ -984,7 +1018,7 @@ public class PlayerPanel extends FContainer {
     public void setSleeveIndex(int newSleeveIndex) {
         sleeveIndex = newSleeveIndex;
         sleeveArtKey = ""; // picking a built-in sleeve clears any card-art sleeve
-        sleeveArtOffset = 500;
+        sleeveArtOffset = Deck.DEFAULT_SLEEVE_OFFSET;
         if (sleeveIndex != -1) {
             sleeveLabel.setIcon(new FTextureRegionImage(FSkin.getSleeves().get(newSleeveIndex)));
         }
@@ -1001,15 +1035,8 @@ public class PlayerPanel extends FContainer {
         return sleeveIndex;
     }
 
-    public String getSleeveArtKey() {
-        return sleeveArtKey == null ? "" : sleeveArtKey;
-    }
     public void setSleeveArtKey(String key) {
         sleeveArtKey = key == null ? "" : key;
-    }
-
-    public int getSleeveArtOffset() {
-        return sleeveArtOffset;
     }
 
     public void setPlayerName(String string) {

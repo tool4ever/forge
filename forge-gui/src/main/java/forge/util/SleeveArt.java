@@ -100,12 +100,4 @@ public final class SleeveArt {
         }
         return sb.toString();
     }
-
-    public static int offsetForKey(final String libraryPref, final String key) {
-        if (key == null || key.isEmpty()) {
-            return DEFAULT_OFFSET;
-        }
-        final Integer offset = parseLibrary(libraryPref).get(key);
-        return offset == null ? DEFAULT_OFFSET : offset;
-    }
 }
