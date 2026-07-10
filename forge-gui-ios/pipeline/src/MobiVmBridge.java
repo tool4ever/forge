@@ -71,6 +71,19 @@ public class MobiVmBridge {
     static final Map<String, Map<String, String[]>> MEMBER_RULES = new HashMap<>();
 
     static final Map<String, List<String>> UNRESOLVED = new TreeMap<>();
+
+    // jvmdg stub members reachable from forge app code that are verified MobiVM-safe (no broken
+    // <clinit> that loads a MobiVM-absent class) and so intentionally left unbridged. Any OTHER
+    // forge-reachable unbridged jvmdg stub member trips the build gate below — it is the
+    // J_U_S_Stream.toList class of latent iOS crash. Audited 2026-07-10. Add here only after
+    // decompiling the stub's <clinit>/impl and confirming it cannot throw on MobiVM.
+    static final Set<String> GATE_ALLOWLIST = new HashSet<>(Arrays.asList(
+        "xyz/wagyourtail/jvmdg/j11/stub/java_base/J_U_F_Predicate.not",
+        "xyz/wagyourtail/jvmdg/j11/stub/java_base/J_U_Optional.isEmpty",
+        "xyz/wagyourtail/jvmdg/j9/stub/java_base/J_U_Objects.requireNonNullElseGet",
+        "xyz/wagyourtail/jvmdg/j9/stub/java_base/J_U_C_CompletableFuture.completeOnTimeout"
+    ));
+
     static int redirects = 0;
     static int handleRedirects = 0;
     static int serializableLambdaFixes = 0;
@@ -106,6 +119,49 @@ public class MobiVmBridge {
                         + " refs, e.g. " + e.getValue().get(0));
             }
         }
+
+        // Build gate: a jvmdg stub METHOD reachable from forge app code with no bridge rule is the
+        // J_U_S_Stream.toList class of latent iOS crash — the stub executes on device and its
+        // <clinit>/impl may load a MobiVM-absent class (e.g. java.util.stream.ReferencePipeline) and
+        // throw. Flag these with a distinct marker; the pipeline greps for it and fails the build.
+        List<String> gateFails = new ArrayList<>();
+        for (Map.Entry<String, List<String>> e : UNRESOLVED.entrySet()) {
+            String key = e.getKey();
+            if (!key.contains("xyz/wagyourtail/jvmdg/") || !key.startsWith("METHOD ")) {
+                continue;
+            }
+            String forgeRef = firstForgeRef(e.getValue());
+            if (forgeRef == null) {
+                continue; // only jvmdg-internal referrers -> inert on device
+            }
+            boolean allowed = false;
+            for (String a : GATE_ALLOWLIST) {
+                if (key.contains(a)) { allowed = true; break; }
+            }
+            if (!allowed) {
+                gateFails.add(key + "  <- e.g. " + forgeRef);
+            }
+        }
+        if (!gateFails.isEmpty()) {
+            System.out.println("BRIDGE-GATE-FAIL (" + gateFails.size()
+                    + ") — unbridged jvmdg stub member(s) reachable from forge code (would crash on device like J_U_S_Stream.toList):");
+            for (String k : gateFails) {
+                System.out.println("  " + k);
+            }
+            System.out.println("Fix each: add a bridge.cfg 'member' rule redirecting it to a forge.compat helper"
+                    + " (see forge.compat.JStream8), OR add it to MobiVmBridge.GATE_ALLOWLIST after decompiling"
+                    + " its <clinit>/impl and confirming it cannot throw on MobiVM.");
+        }
+    }
+
+    /** First forge/* referrer in the list, or null if none (jvmdg-internal referrers are inert on device). */
+    static String firstForgeRef(List<String> refs) {
+        for (String r : refs) {
+            if (r.startsWith("forge/")) {
+                return r;
+            }
+        }
+        return null;
     }
 
     static void loadRules(String path) throws Exception {

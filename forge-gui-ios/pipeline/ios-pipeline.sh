@@ -263,6 +263,13 @@ classpath() {
     java -cp "$TOOLS_CP" MobiVmBridge --rules "$PIPE/bridge.cfg" --index "$INDEX" \
         "${BRIDGE_ARGS[@]}" > "$WORK/bridge-report.txt" 2>&1 || true
     head -2 "$WORK/bridge-report.txt"
+    # Build gate: fail if a jvmdg stub reachable from forge code was left unbridged (the
+    # J_U_S_Stream.toList class of latent iOS crash). MobiVmBridge emits BRIDGE-GATE-FAIL for these.
+    if grep -q 'BRIDGE-GATE-FAIL' "$WORK/bridge-report.txt"; then
+        echo "!!! LINK GATE FAILED — unbridged jvmdg stub reachable from forge code:"
+        grep -A50 'BRIDGE-GATE-FAIL' "$WORK/bridge-report.txt"
+        exit 1
+    fi
     # The downgradeApi output has the runtime API stubs (jXX/stub/*) but NOT the
     # jvmdg runtime-support classes those stubs call: exc/* (MissingStubError) and
     # util/* (Utils, Function, Pair, IOFunction, ...). Missing util/* crashed
