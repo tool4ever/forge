@@ -370,8 +370,14 @@ public class Main extends IOSApplication.Delegate {
                 options.setEnvironment("iOS");
                 options.setTag("Platform", "iOS/RoboVM");
                 options.setShutdownTimeoutMillis(5000);
+                // The MOBILE project DSN (project 2), matching Android's manifest and
+                // forge-gui-mobile-dev/sentry.properties — desktop reports to project 3.
+                // Plain HTTP on :9000 is where the self-hosted Sentry actually listens
+                // (per the checked-in sentry.properties); the HTTPS/443 form used by the
+                // desktop launcher's fallback answers 530 and drops events. Java sockets
+                // on RoboVM are not subject to ATS, so http:// works here.
                 if (options.getDsn() == null || options.getDsn().isEmpty())
-                    options.setDsn("https://87bc8d329e49441895502737c069067b@sentry.asgardsrealm.net//3");
+                    options.setDsn("http://a0b8dbad9b8a49cfa51bf65d462e8dae@sentry.asgardsrealm.net:9000/2");
             });
         } catch (Throwable t) {
             log("Sentry init failed (continuing without crash reporting): " + t.getMessage());
