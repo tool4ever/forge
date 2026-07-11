@@ -436,7 +436,7 @@ ipa() {
     (cd "$ROOT/forge-gui-ios" && mvn robovm:create-ipa --settings "$SETTINGS" \
         -Dmaven.repo.local="$CLONE" -DskipTests \
         -Drobovm.iosSkipSigning=true 2>&1 | tail -12)
-    IPA=$(ls "$ROOT"/forge-gui-ios/target/robovm.tmp/*.ipa "$ROOT"/forge-gui-ios/target/*.ipa 2>/dev/null | head -1)
+    IPA=$(ls "$ROOT"/forge-gui-ios/target/robovm/*.ipa 2>/dev/null | head -1)
     [ -n "$IPA" ] || { echo "IPA MISSING - build failed"; exit 1; }
     echo "UNSIGNED IPA: $IPA"
 }
