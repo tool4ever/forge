@@ -190,8 +190,12 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
 
         player = TrackableTypes.PlayerViewType.lookup(player); //ensure we use the correct player
 
+        // HashMap.put keeps the existing key on an id-equal put and PlayerView equality is by id, so without
+        // removing first, re-registration across matches would retain the prior game's stale PlayerView
         final boolean doSetCurrentPlayer = originalGameControllers.isEmpty();
+        originalGameControllers.remove(player);
         originalGameControllers.put(player, gameController);
+        gameControllers.remove(player);
         gameControllers.put(player, gameController);
         if (doSetCurrentPlayer) {
             setCurrentPlayer(player);
@@ -375,7 +379,9 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
         return selectionMax;
     }
 
-    private final Set<CardView> weaklySelectableCards = Sets.newHashSet();
+    /** Weighted membership: duplicates in the pushed iterable accumulate counts, so a card's
+     *  count expresses how "strong" its selectability is (1 = actionable, 2 = Auto would tap it). */
+    private final Multiset<CardView> weaklySelectableCards = HashMultiset.create();
 
     public void setWeaklySelectable(final Iterable<CardView> cards) {
         weaklySelectableCards.clear();
@@ -390,6 +396,10 @@ public abstract class AbstractGuiGame implements IGuiGame, IMayViewCards {
 
     public boolean isWeaklySelectable(final CardView card) {
         return weaklySelectableCards.contains(card);
+    }
+
+    public int getWeakSelectableStrength(final CardView card) {
+        return weaklySelectableCards.count(card);
     }
 
     public boolean isGamePaused() {
