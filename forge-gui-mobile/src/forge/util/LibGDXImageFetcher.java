@@ -182,10 +182,11 @@ public class LibGDXImageFetcher extends ImageFetcher {
             if (!newdespath.contains(".full") && urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD) &&
                     !destPath.startsWith(ForgeConstants.CACHE_TOKEN_PICS_DIR) && !destPath.startsWith(ForgeConstants.CACHE_PLANECHASE_PICS_DIR))
                 newdespath = newdespath.replace(".jpg", ".fullborder.jpg"); //fix planes/phenomenon for round border options
-            // For Scryfall API URLs, resolve to direct CDN URL first
-            // (RoboVM's OkHttp can't follow Scryfall's 302 redirects)
+            // iOS only: resolve Scryfall API URLs to the direct CDN URL first (RoboVM's HTTP stack
+            // can't follow Scryfall's 302 redirects). Other platforms follow redirects natively —
+            // gating this avoids doubling their Scryfall API request count per image.
             String downloadUrl = urlToDownload;
-            if (urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD)) {
+            if (GuiBase.isIOS() && urlToDownload.startsWith(ForgeConstants.URL_PIC_SCRYFALL_DOWNLOAD)) {
                 String cdnUrl = resolveScryfallUrl(urlToDownload);
                 if (cdnUrl == null) {
                     System.err.println("  Could not resolve Scryfall CDN URL");

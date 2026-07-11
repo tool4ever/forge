@@ -43,6 +43,7 @@ import forge.Forge;
 import forge.ImageKeys;
 import forge.card.CardEdition;
 import forge.card.CardRenderer;
+import forge.gui.GuiBase;
 import forge.deck.Deck;
 import forge.game.card.CardView;
 import forge.game.player.IHasIcon;
@@ -158,6 +159,13 @@ public class ImageCache {
      * so we need to construct a relative path like ../../Documents/...
      */
     private String toRelativePath(String absolutePath) {
+        // iOS-only rewriting: on any other platform the absolute path is already what the
+        // AssetManager's resolver expects — and desktop macOS paths legitimately contain
+        // /Documents/ or /Library/ (e.g. ~/Library/Caches), which must NOT be rewritten.
+        if (!GuiBase.isIOS()) {
+            return absolutePath;
+        }
+
         // Extract the portion after the app container UUID
         // Path format: .../Application/UUID/Documents/cache/pics/...
         // We want: ../../Documents/cache/pics/...
@@ -426,8 +434,9 @@ public class ImageCache {
         String absolutePath = file.getPath();
         String path = toRelativePath(absolutePath);
 
-        // iOS fix: Check downloaded texture cache first (for images in Documents)
-        if (absolutePath.contains("/Documents/cache")) {
+        // iOS only: check the downloaded-texture cache first (images in Documents bypass the
+        // AssetManager there — see loadAsset)
+        if (GuiBase.isIOS() && absolutePath.contains("/Documents/cache")) {
             Texture cached = downloadedTextureCache.get(absolutePath);
             if (cached != null) {
                 return cached;
@@ -499,9 +508,10 @@ public class ImageCache {
         String absolutePath = file.getPath();
         String fileName = toRelativePath(absolutePath);
 
-        // iOS fix: For downloaded images (in Documents/cache), bypass AssetManager
-        // Read file as bytes and create Pixmap directly (libGDX iOS can't load from FileHandle in Documents)
-        boolean isDownloadedImage = absolutePath.contains("/Documents/cache");
+        // iOS only: downloaded images (in Documents/cache) bypass the AssetManager —
+        // read the bytes and create the Pixmap directly (libGDX iOS can't load a
+        // FileHandle from Documents). Other platforms keep the AssetManager path.
+        boolean isDownloadedImage = GuiBase.isIOS() && absolutePath.contains("/Documents/cache");
         Texture directTexture = null;
 
         if (isDownloadedImage) {

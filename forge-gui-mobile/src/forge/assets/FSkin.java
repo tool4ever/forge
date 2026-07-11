@@ -37,7 +37,7 @@ public class FSkin {
      * every other platform keeps the original absolute() behavior — Android's assets are
      * extracted to storage and are NOT reachable via internal() APK paths.
      */
-    private static FileHandle getFileHandle(String path) {
+    static FileHandle getFileHandle(String path) { //package-visible: FSkinFont shares this
         if (GuiBase.isIOS()) {
             String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
             return Gdx.files.internal(relativePath);
