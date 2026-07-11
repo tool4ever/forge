@@ -208,14 +208,17 @@ bootstrap() {
 classpath() {
     echo "=== [1/8] resolve classpath + fix \${revision} poms ==="
     VERSION="$(grep -A1 '<versionCode>' "$ROOT/pom.xml" | grep -o '[0-9.]*')-SNAPSHOT"
-    find "$M2/forge" -name "*.pom" -exec sed -i '' "s/\\\${revision}/$VERSION/g" {} \;
+    # portable in-place sed: GNU (Linux/CI) uses -i, BSD (macOS) uses -i ''
+    if sed --version >/dev/null 2>&1; then SEDI=(sed -i); else SEDI=(sed -i ''); fi
+    find "$M2/forge" -name "*.pom" -exec "${SEDI[@]}" "s/\\\${revision}/$VERSION/g" {} \;
     (cd "$ROOT/forge-gui-ios" && mvn -q dependency:build-classpath \
         -Dmdep.outputFile="$CP_FILE" --settings "$SETTINGS")
 
-    echo "=== [2/8] reset work dirs + clone maven repo (APFS CoW) ==="
+    echo "=== [2/8] reset work dirs + clone maven repo ==="
     rm -rf "$WORK" "$CLONE"
     mkdir -p "$WORK/dg" "$WORK/out"
-    cp -Rc "$M2" "$CLONE"
+    # APFS copy-on-write clone on macOS; plain copy elsewhere (Linux CI)
+    cp -Rc "$M2" "$CLONE" 2>/dev/null || cp -R "$M2" "$CLONE"
 
     echo "=== [3/8] partition classpath ==="
     ALL_JARS=$(tr ':' '\n' < "$CP_FILE")
@@ -319,6 +322,13 @@ build_module() {
     java -cp "$TOOLS_CP" MobiVmBridge --rules "$PIPE/bridge.cfg" \
         --index "$RT,$ROBOVM_OBJC,$ROBOVM_CT,$GDXB,$SS_JAR,$SSCF_JAR,$WORK/java-time-supply.jar,$NIO_JAR,$DG_JARS,gui-ios-dg.jar" \
         --in gui-ios-dg.jar --out gui-ios-bridged.jar > "$WORK/gui-ios-bridge-report.txt" 2>&1 || true
+    # same link gate as the dependency pass: an unbridged jvmdg stub reachable
+    # from the app module is a guaranteed runtime crash on device
+    if grep -q 'BRIDGE-GATE-FAIL' "$WORK/gui-ios-bridge-report.txt"; then
+        echo "!!! LINK GATE FAILED (forge-gui-ios) — unbridged jvmdg stub reachable:"
+        grep -A50 'BRIDGE-GATE-FAIL' "$WORK/gui-ios-bridge-report.txt"
+        exit 1
+    fi
     rm -rf classes && mkdir classes && (cd classes && jar xf ../gui-ios-bridged.jar && rm -rf META-INF)
 
     echo "=== audit forge-gui-ios classes ==="
@@ -395,10 +405,48 @@ EOF
     echo "INSTALLED"
 }
 
+# ------------------------------------------------------------------ CI modes
+# audit: the full transform + link-gate WITHOUT any Apple tooling. Runs on a
+# plain Linux runner in a few minutes and fails (exit 1) when Java code
+# reachable from forge would crash on MobiVM (unbridged jvmdg stub, missing
+# API). This is the per-PR iOS-compatibility check.
+audit() {
+    echo "=== install forge modules the iOS classpath resolves against ==="
+    # '.' installs the parent POM too — required on a fresh clone, else the
+    # iOS classpath resolution fails on the forge:forge:pom \${revision} parent
+    (cd "$ROOT" && mvn -B -ntp -q install \
+        -pl .,forge-core,forge-game,forge-gui,forge-gui-mobile,forge-ai -DskipTests)
+    classpath
+    build_module
+    echo "iOS COMPATIBILITY GATE PASSED"
+}
+
+# ipa: full RoboVM AOT build producing an UNSIGNED .ipa (macOS runner; no
+# certificates/profiles required). Users install it via Sideloadly/AltStore,
+# which re-sign with their own Apple ID — no jailbreak involved.
+ipa() {
+    echo "=== install forge modules ==="
+    # '.' installs the parent POM too — required on a fresh clone, else the
+    # iOS classpath resolution fails on the forge:forge:pom \${revision} parent
+    (cd "$ROOT" && mvn -B -ntp -q install \
+        -pl .,forge-core,forge-game,forge-gui,forge-gui-mobile,forge-ai -DskipTests)
+    classpath
+    prep_build
+    echo "=== robovm:create-ipa (unsigned) ==="
+    (cd "$ROOT/forge-gui-ios" && mvn robovm:create-ipa --settings "$SETTINGS" \
+        -Dmaven.repo.local="$CLONE" -DskipTests \
+        -Drobovm.iosSkipSigning=true 2>&1 | tail -12)
+    IPA=$(ls "$ROOT"/forge-gui-ios/target/robovm.tmp/*.ipa "$ROOT"/forge-gui-ios/target/*.ipa 2>/dev/null | head -1)
+    [ -n "$IPA" ] || { echo "IPA MISSING - build failed"; exit 1; }
+    echo "UNSIGNED IPA: $IPA"
+}
+
 bootstrap
 case "$MODE" in
     classpath) classpath ;;
     sim)       sim ;;
     device)    device ;;
-    *) echo "usage: $0 [classpath|sim|device]"; exit 1 ;;
+    audit)     audit ;;
+    ipa)       ipa ;;
+    *) echo "usage: $0 [classpath|sim|device|audit|ipa]"; exit 1 ;;
 esac
