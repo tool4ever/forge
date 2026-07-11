@@ -659,7 +659,7 @@ public class Forge implements ApplicationListener {
     // app away and relaunch. On iOS, return to the main menu instead so the app
     // stays usable: adventure -> classic home (switchToClassic), classic -> home.
     private static boolean iOSReturnToMainMenu() {
-        if (Gdx.app == null || Gdx.app.getType() != Application.ApplicationType.iOS)
+        if (!GuiBase.isIOS())
             return false;
         if (isMobileAdventureMode)
             switchToClassic();
@@ -1290,7 +1290,7 @@ public class Forge implements ApplicationListener {
         @Override
         public boolean keyTyped(char ch) {
             if (keyInputAdapter != null) {
-                if (Gdx.app != null && Gdx.app.getType() == Application.ApplicationType.iOS) {
+                if (GuiBase.isIOS()) {
                     // The iOS software keyboard delivers one keyTyped per tap and
                     // routes backspace (0x08) / delete (0x7F) through keyTyped
                     // rather than keyDown. The upstream de-dup below blocked

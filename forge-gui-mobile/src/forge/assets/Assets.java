@@ -1,6 +1,5 @@
 package forge.assets;
 
-import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetLoaderParameters;
@@ -43,43 +42,30 @@ public class Assets implements Disposable {
     private static class HybridFileHandleResolver implements FileHandleResolver {
         private final AbsoluteFileHandleResolver absoluteResolver = new AbsoluteFileHandleResolver();
         private final InternalFileHandleResolver internalResolver = new InternalFileHandleResolver();
-        private final boolean isIosOrAndroid;
-
-        public HybridFileHandleResolver() {
-            this.isIosOrAndroid = Gdx.app != null &&
-                (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android);
-        }
 
         @Override
         public FileHandle resolve(String fileName) {
-            if (isIosOrAndroid) {
-                // On iOS/Android: absolute paths use absoluteResolver, relative paths use internalResolver
-                if (fileName.startsWith("/")) {
-                    return absoluteResolver.resolve(fileName);
-                } else {
-                    return internalResolver.resolve(fileName);
-                }
-            } else {
-                // On Desktop: always use absolute paths
-                return absoluteResolver.resolve(fileName);
+            // iOS only: bundle-internal resources must resolve via internal() (the app bundle
+            // lives behind a /var symlink that absolute() fails to realpath inside the sandbox).
+            // All other platforms keep master's absolute-resolver behavior unchanged — Android's
+            // assets are extracted to storage and were always resolved absolutely.
+            if (GuiBase.isIOS() && !fileName.startsWith("/")) {
+                return internalResolver.resolve(fileName);
             }
+            return absoluteResolver.resolve(fileName);
         }
     }
 
     /**
-     * Helper method to get FileHandle that works on both iOS and Android.
-     * On iOS/Android, bundled resources must use internal() with relative paths.
-     * On Desktop, we can use absolute() with full paths.
+     * FileHandle for a bundled resource. iOS resolves via internal() with the assets-dir prefix
+     * stripped (see HybridFileHandleResolver); every other platform uses absolute() as before.
      */
     private static FileHandle getFileHandle(String path) {
-        if (Gdx.app != null && (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android)) {
-            // On iOS/Android, strip the assets directory prefix and use internal()
+        if (GuiBase.isIOS()) {
             String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
             return Gdx.files.internal(relativePath);
-        } else {
-            // On Desktop, use absolute paths
-            return Gdx.files.absolute(path);
         }
+        return Gdx.files.absolute(path);
     }
 
     private MemoryTrackingAssetManager manager;

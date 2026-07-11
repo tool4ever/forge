@@ -1,7 +1,5 @@
 package forge.adventure.util;
 
-import com.badlogic.gdx.Application;
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -126,12 +124,9 @@ public class Config {
     }
 
     private String resPath() {
-        if (GuiBase.isAndroid()) {
-            return ForgeConstants.ASSETS_DIR;
-        }
-        // iOS: resources live inside the app bundle (ASSETS_DIR); the
-        // desktop-relative "./res" probes below never match there
-        if (Gdx.app != null && Gdx.app.getType() == Application.ApplicationType.iOS) {
+        // Android/iOS: resources live at ASSETS_DIR (extracted storage / app bundle);
+        // the desktop-relative "./res" probes below never match there
+        if (GuiBase.isAndroid() || GuiBase.isIOS()) {
             return ForgeConstants.ASSETS_DIR;
         }
         return Files.exists(Paths.get("./res")) ? "./" : Files.exists(Paths.get("./forge-gui/")) ? "./forge-gui/" : "../forge-gui";

@@ -250,8 +250,9 @@ public class Main extends IOSApplication.Delegate {
             boolean isTablet = org.robovm.apple.uikit.UIDevice.getCurrentDevice().getUserInterfaceIdiom()
                 == org.robovm.apple.uikit.UIUserInterfaceIdiom.Pad;
 
-            // (upstream GuiBase has no iOS flag; platform behavior is keyed off
-            // Gdx.app.getType() / the adapter now)
+            // Mark this as the iOS port (mirrors the Android launcher's setIsAndroid) so shared
+            // modules branch on GuiBase.isIOS() instead of sniffing libGDX's ApplicationType.
+            forge.gui.GuiBase.setIsIOS(true);
 
             // Log physical device RAM (MB) for diagnostics. Upstream's getApp no
             // longer takes a RAM hint (the feature branch's cache-sizing lever);

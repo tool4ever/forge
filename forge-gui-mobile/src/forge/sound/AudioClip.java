@@ -18,8 +18,8 @@
 
 package forge.sound;
 
-import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
+import forge.gui.GuiBase;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
@@ -57,7 +57,7 @@ public class AudioClip implements IAudioClip {
     }
 
     private AudioClip(final FileHandle fileHandle) {
-        ios = Gdx.app != null && Gdx.app.getType() == Application.ApplicationType.iOS;
+        ios = GuiBase.isIOS();
         try {
             if (ios) {
                 //route effects through the AVAudioPlayer domain (see class comment)

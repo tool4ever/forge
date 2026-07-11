@@ -1,6 +1,5 @@
 package forge.assets;
 
-import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.loaders.TextureLoader;
 import com.badlogic.gdx.files.FileHandle;
@@ -33,20 +32,17 @@ public class FSkin {
     private static boolean loaded = false;
 
     /**
-     * Helper method to get FileHandle that works on both iOS and Android.
-     * On iOS/Android, bundled resources must use internal() with relative paths
-     * (device bundle paths via absolute() fail: /var symlink + sandbox realpath).
-     * On Desktop, we can use absolute() with full paths.
+     * FileHandle for a bundled resource. iOS must use internal() with a relative path (the app
+     * bundle lives behind a /var symlink that absolute() fails to realpath inside the sandbox);
+     * every other platform keeps the original absolute() behavior — Android's assets are
+     * extracted to storage and are NOT reachable via internal() APK paths.
      */
     private static FileHandle getFileHandle(String path) {
-        if (Gdx.app != null && (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android)) {
-            // On iOS/Android, strip the assets directory prefix and use internal()
+        if (GuiBase.isIOS()) {
             String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
             return Gdx.files.internal(relativePath);
-        } else {
-            // On Desktop, use absolute paths
-            return Gdx.files.absolute(path);
         }
+        return Gdx.files.absolute(path);
     }
 
     public static Texture getLogo() {
@@ -128,7 +124,7 @@ public class FSkin {
     }
     private static void useFallbackDir() {
         // iOS and Android both need to use internal() for bundled resources
-        boolean isMobile = Gdx.app != null && (Gdx.app.getType() == ApplicationType.iOS || Gdx.app.getType() == ApplicationType.Android);
+        boolean isMobile = GuiBase.isAndroid() || GuiBase.isIOS();
         preferredDir = isMobile ? Gdx.files.internal("fallback_skin") : Gdx.files.classpath("fallback_skin");
     }
     public static void loadLight(String skinName, final SplashScreen splashScreen,FileHandle prefDir) {
@@ -150,13 +146,12 @@ public class FSkin {
         Forge.hdbuttons = false;
         Forge.hdstart = false;
         // TODO: the "v2" string should be a property of the default skin.
-        // iOS compatibility: Use writable local storage for marker file on iOS
-        FileHandle v2File = null;
-        if (Gdx.app != null && Gdx.app.getType() == ApplicationType.iOS) {
-            // On iOS, use local (writable) storage for the marker file
+        // iOS: the bundle is read-only, so the marker file lives in writable local storage
+        FileHandle v2File;
+        if (GuiBase.isIOS()) {
             v2File = Gdx.files.local("fonts/v2");
         } else {
-            // On other platforms, use the standard location
+            // Other platforms: the standard location
             v2File = getFileHandle(ForgeConstants.FONTS_DIR + "v2");
         }
 
