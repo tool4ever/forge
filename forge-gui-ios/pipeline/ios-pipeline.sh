@@ -177,12 +177,6 @@ bootstrap() {
         (cd "$JV/function-stub-classes" && jar cf "$FUNC_JAR" .)
     fi
 
-    # sentry no-op stubs
-    if [ ! -f "$JV/.sentry-stub-built" ] || [ -n "$(find "$ROOT/forge-gui-ios/sentry-stub/src" -name '*.java' -newer "$JV/.sentry-stub-built" 2>/dev/null | head -1)" ]; then
-        bash "$ROOT/forge-gui-ios/sentry-stub/build.sh"
-        touch "$JV/.sentry-stub-built"
-    fi
-
     # install every pom-declared supply into ~/.m2 so forge-gui-ios compiles
     # resolve on a fresh clone (the classpath step installs the transformed
     # variants into the build clone separately)

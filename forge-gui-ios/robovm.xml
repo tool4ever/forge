@@ -100,6 +100,11 @@
     <!-- image pipeline nested classes (hybrid resolver, LRU caches) -->
     <pattern>forge.assets.Assets$*</pattern>
     <pattern>forge.assets.ImageCache$*</pattern>
+    <!-- Sentry crash reporting: the SDK wires integrations/transports via
+         reflection and ServiceLoader, which the tree-shaker cannot see.
+         Missing classes here historically killed the game thread with
+         NoClassDefFoundError on shared telemetry call sites. -->
+    <pattern>io.sentry.**</pattern>
   </forceLinkClasses>
   <frameworkPaths>
     <path>libs</path>

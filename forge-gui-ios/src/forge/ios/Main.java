@@ -358,6 +358,24 @@ public class Main extends IOSApplication.Delegate {
         } catch (Throwable t) {
             log("Failed to redirect System.out/err: " + t.getMessage());
         }
+
+        // Crash reporting — mirrors the desktop launcher's Sentry setup (same project DSN).
+        // Events are only SENT when the user's USE_SENTRY preference allows it
+        // (BugReporter.isSentryEnabled); the init itself is passive. Never let telemetry
+        // setup break app launch.
+        try {
+            io.sentry.Sentry.init(options -> {
+                options.setEnableExternalConfiguration(true);
+                options.setRelease(forge.util.BuildInfo.getVersionString());
+                options.setEnvironment("iOS");
+                options.setTag("Platform", "iOS/RoboVM");
+                options.setShutdownTimeoutMillis(5000);
+                if (options.getDsn() == null || options.getDsn().isEmpty())
+                    options.setDsn("https://87bc8d329e49441895502737c069067b@sentry.asgardsrealm.net//3");
+            });
+        } catch (Throwable t) {
+            log("Sentry init failed (continuing without crash reporting): " + t.getMessage());
+        }
         try {
             // Use iOS NSTimeZone API to avoid sandbox violations when accessing /etc/localtime
             NSTimeZone systemTimeZone = NSTimeZone.getSystemTimeZone();

@@ -62,34 +62,16 @@
             <groupId>forge</groupId>
             <artifactId>forge-core</artifactId>
             <version>${revision}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.sentry</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>forge</groupId>
             <artifactId>forge-game</artifactId>
             <version>${revision}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.sentry</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>forge</groupId>
             <artifactId>forge-ai</artifactId>
             <version>${revision}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.sentry</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>forge</groupId>
@@ -102,10 +84,6 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.eclipse.jetty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.sentry</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
@@ -121,10 +99,6 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.eclipse.jetty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.sentry</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
@@ -176,17 +150,6 @@
         <dependency>
             <groupId>forge.stubs</groupId>
             <artifactId>java-function-stubs</artifactId>
-            <version>1.0</version>
-        </dependency>
-        <!-- No-op stub for io.sentry.* . The real Sentry SDK is excluded above
-             (it doesn't link on RoboVM), but shared Forge code calls Sentry
-             telemetry on hot paths (e.g. PlayerControllerHuman.chooseEntitiesForEffect
-             when resolving a library search like Cultivate/Kodama/Genesis Hydra).
-             Without these stubs those calls throw NoClassDefFoundError: io/sentry/Sentry
-             at runtime and silently kill the game thread. Source: sentry-stub/. -->
-        <dependency>
-            <groupId>forge.stubs</groupId>
-            <artifactId>sentry-stub</artifactId>
             <version>1.0</version>
         </dependency>
         <!-- ==== MobiVM modern-Java pipeline supplies (tmp/jvmdg) ====
