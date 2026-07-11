@@ -132,9 +132,11 @@ public class NetworkLogWriter extends AbstractFormatPatternWriter {
             sb.append("=".repeat(80)).append("\n");
             writer.write(sb.toString());
             writer.flush();
-        } catch (Throwable e) {
+        } catch (LinkageError | Exception e) {
             // Non-critical: the network log header is diagnostic; never let it
-            // break hosting (e.g. a MobiVM-unsupported API in a downgrade stub).
+            // break hosting (e.g. a MobiVM-unsupported API in a downgrade stub —
+            // NoClassDefFoundError/NoSuchMethodError are LinkageErrors). Genuinely
+            // fatal Errors (OutOfMemoryError etc.) still propagate.
         }
     }
 }

@@ -398,9 +398,12 @@ public class HostedMatch {
         // quest-draft bracket) build Match directly and bypass HostedMatch.
         // Runs after game=null + afterGameEnd above, so the finished game's
         // whole object graph is collectible (more than a gc while it's still
-        // referenced). Keeps the iPad under its jetsam ceiling across the
-        // games of a multi-game Commander match.
-        System.gc();
+        // referenced). iOS only: it keeps the iPad under its jetsam ceiling
+        // across the games of a multi-game Commander match; other platforms
+        // don't need it and shouldn't pay the GC stall.
+        if (GuiBase.isIOS()) {
+            System.gc();
+        }
     }
 
     public void pause() {

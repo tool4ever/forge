@@ -101,15 +101,26 @@ public class OSLogPrintStream extends PrintStream {
     public void print(String s) {
         if (s == null) s = "null";
         synchronized (buffer) {
-            for (int i = 0; i < s.length(); i++) {
-                char c = s.charAt(i);
-                if (c == '\n') {
-                    flushBuffer();
-                } else {
-                    buffer.write(c);
-                }
+            // Buffer UTF-8 bytes, not raw chars: ByteArrayOutputStream.write(int)
+            // truncates a char to its low 8 bits, garbling any non-ASCII text
+            // (localized strings, card names with accents).
+            int start = 0;
+            int nl;
+            while ((nl = s.indexOf('\n', start)) != -1) {
+                writeUtf8(s.substring(start, nl));
+                flushBuffer();
+                start = nl + 1;
             }
+            writeUtf8(s.substring(start));
         }
+    }
+
+    private void writeUtf8(String part) {
+        if (part.isEmpty()) {
+            return;
+        }
+        byte[] bytes = part.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        buffer.write(bytes, 0, bytes.length);
     }
 
     @Override
@@ -182,7 +193,9 @@ public class OSLogPrintStream extends PrintStream {
     }
 
     private void flushBuffer() {
-        String line = buffer.toString();
+        // Decode explicitly as UTF-8 (the buffer holds UTF-8 bytes from print()
+        // and write()); the no-arg toString() uses the platform default charset.
+        String line = new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         buffer.reset();
         log(line);
     }

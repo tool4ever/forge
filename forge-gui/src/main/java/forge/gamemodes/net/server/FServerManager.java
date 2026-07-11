@@ -702,12 +702,13 @@ public final class FServerManager implements IHasForgeLog {
                     }
                 }
             }, 5000);
-        } catch (Throwable e) {
+        } catch (LinkageError | Exception e) {
             // UPnP port mapping is optional (it makes the host reachable from the
             // internet; LAN/direct hosting works without it). jupnp is unavailable
             // on iOS/MobiVM (provided scope, no platform UPnP service), so the
-            // PortMapping/UpnpService classes fail to load - catch Throwable so
-            // NoClassDefFoundError degrades gracefully instead of killing hosting.
+            // PortMapping/UpnpService classes fail to load - NoClassDefFoundError
+            // is a LinkageError and degrades gracefully instead of killing hosting,
+            // while fatal Errors (OutOfMemoryError etc.) still propagate.
             netLog.error(e, "UPnP mapping unavailable");
         }
     }

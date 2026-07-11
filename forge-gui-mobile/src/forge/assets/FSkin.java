@@ -36,11 +36,13 @@ public class FSkin {
      * bundle lives behind a /var symlink that absolute() fails to realpath inside the sandbox);
      * every other platform keeps the original absolute() behavior — Android's assets are
      * extracted to storage and are NOT reachable via internal() APK paths.
+     * Only paths under ASSETS_DIR (the read-only bundle) are rerouted: writable locations
+     * (cache/Documents — downloaded skins, generated .fnt files, planechase pics) keep
+     * absolute(), which works fine in the iOS sandbox.
      */
     static FileHandle getFileHandle(String path) { //package-visible: FSkinFont shares this
-        if (GuiBase.isIOS()) {
-            String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
-            return Gdx.files.internal(relativePath);
+        if (GuiBase.isIOS() && path.startsWith(ForgeConstants.ASSETS_DIR)) {
+            return Gdx.files.internal(path.substring(ForgeConstants.ASSETS_DIR.length()));
         }
         return Gdx.files.absolute(path);
     }
