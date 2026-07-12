@@ -29,6 +29,7 @@ import forge.localinstance.properties.ForgeConstants;
 import forge.localinstance.skin.FSkinProp;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static forge.assets.FSkin.getDefaultSkinFile;
@@ -74,7 +75,7 @@ public class Assets implements Disposable {
 
     private MemoryTrackingAssetManager manager;
     private HashMap<Integer, FSkinFont> fonts;
-    private java.util.LinkedHashMap<String, FImageComplex> cardArtCache;
+    private LinkedHashMap<String, FImageComplex> cardArtCache;
     private HashMap<String, FImage> avatarImages;
     private HashMap<String, FSkinImageInterface> manaImages;
     private HashMap<String, FSkinImageInterface> symbolLookup;
@@ -195,13 +196,13 @@ public class Assets implements Disposable {
         return fonts;
     }
 
-    public java.util.LinkedHashMap<String, FImageComplex> cardArtCache() {
+    public LinkedHashMap<String, FImageComplex> cardArtCache() {
         // LRU-capped: card art entries otherwise accumulate unboundedly over a
         // long session (memory hygiene on RAM-constrained devices)
         if (cardArtCache == null)
-            cardArtCache = new java.util.LinkedHashMap<String, FImageComplex>(100, 0.75f, true) {
+            cardArtCache = new LinkedHashMap<String, FImageComplex>(100, 0.75f, true) {
                 @Override
-                protected boolean removeEldestEntry(java.util.Map.Entry<String, FImageComplex> eldest) {
+                protected boolean removeEldestEntry(Map.Entry<String, FImageComplex> eldest) {
                     return size() > 100;
                 }
             };

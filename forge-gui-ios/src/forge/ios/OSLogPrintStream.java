@@ -3,6 +3,7 @@ package forge.ios;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 
 import org.robovm.apple.foundation.Foundation;
 import org.robovm.apple.uikit.UIDevice;
@@ -119,7 +120,7 @@ public class OSLogPrintStream extends PrintStream {
         if (part.isEmpty()) {
             return;
         }
-        byte[] bytes = part.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] bytes = part.getBytes(StandardCharsets.UTF_8);
         buffer.write(bytes, 0, bytes.length);
     }
 
@@ -195,7 +196,7 @@ public class OSLogPrintStream extends PrintStream {
     private void flushBuffer() {
         // Decode explicitly as UTF-8 (the buffer holds UTF-8 bytes from print()
         // and write()); the no-arg toString() uses the platform default charset.
-        String line = new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        String line = new String(buffer.toByteArray(), StandardCharsets.UTF_8);
         buffer.reset();
         log(line);
     }

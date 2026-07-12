@@ -18,8 +18,11 @@
 package forge.assets;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Queue;
 import java.util.Set;
 
@@ -86,11 +89,11 @@ public class ImageCache {
 
     // iOS fix: Reverse mapping from Texture to its file path for ImageRecord lookups
     // Needed because texture.toString() isn't unique (returns dimensions, not path)
-    private static final java.util.IdentityHashMap<Texture, String> textureToPath = new java.util.IdentityHashMap<>();
+    private static final IdentityHashMap<Texture, String> textureToPath = new IdentityHashMap<>();
 
     // iOS fix: Cache for downloaded image textures (bypassing AssetManager)
-    private static final java.util.LinkedHashMap<String, Texture> downloadedTextureCache =
-            new java.util.LinkedHashMap<String, Texture>(16, 0.75f, true) {
+    private static final LinkedHashMap<String, Texture> downloadedTextureCache =
+            new LinkedHashMap<String, Texture>(16, 0.75f, true) {
                 @Override
                 protected boolean removeEldestEntry(java.util.Map.Entry<String, Texture> eldest) {
                     if (size() > downloadedTextureCacheMax) {
@@ -520,7 +523,7 @@ public class ImageCache {
                 if (imageFile.exists()) {
                     // Read file as byte array
                     byte[] imageBytes = new byte[(int) imageFile.length()];
-                    java.io.FileInputStream fis = new java.io.FileInputStream(imageFile);
+                    FileInputStream fis = new FileInputStream(imageFile);
                     fis.read(imageBytes);
                     fis.close();
 

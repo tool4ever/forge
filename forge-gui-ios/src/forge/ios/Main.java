@@ -549,7 +549,7 @@ public class Main extends IOSApplication.Delegate {
         }
 
         @Override
-        public boolean isSupportedAudioFormat(java.io.File file) {
+        public boolean isSupportedAudioFormat(File file) {
             // Implemented directly (not via the interface default) for two reasons:
             // the default uses a Set.of interface-static field whose <clinit>
             // doesn't run on MobiVM (NPE), and iOS decodes a different format set.
