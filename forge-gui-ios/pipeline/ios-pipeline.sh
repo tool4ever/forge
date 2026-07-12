@@ -85,6 +85,30 @@ fi
 [ -n "$_pre_PROFILE" ]   && PROFILE="$_pre_PROFILE"
 [ -n "$_pre_TEAM_ID" ]   && TEAM_ID="$_pre_TEAM_ID"
 
+# Prefer a native arm64 JDK 17+ when present so the RoboVM AOT compiler doesn't
+# run under Rosetta on Apple Silicon (a large build-time win — the whole
+# compiler is Java). No-op when JAVA_HOME is already set (e.g. from .env) or no
+# native JDK is installed; the sim arch is pinned explicitly below, so a native
+# JDK flipping RoboVM's default host arch to arm64-simulator is harmless.
+if [ -z "$JAVA_HOME" ] && [ "$(uname -m)" = "arm64" ] && [ -x /usr/libexec/java_home ]; then
+    for _jh in $(/usr/libexec/java_home -V 2>&1 \
+            | grep -oE '/Library/Java/JavaVirtualMachines/[^ ]*/Contents/Home' | sort -u); do
+        [ -x "$_jh/bin/java" ] || continue
+        file "$_jh/bin/java" 2>/dev/null | grep -q arm64 || continue
+        if "$_jh/bin/java" -version 2>&1 | grep -qE '"(1[7-9]|[2-9][0-9])'; then
+            export JAVA_HOME="$_jh"; export PATH="$_jh/bin:$PATH"
+            echo "using native arm64 JDK: $_jh"
+            break
+        fi
+    done
+fi
+
+# RoboVM simulator arch: match the host so the sim runs NATIVELY (no Rosetta).
+# On Apple Silicon that is arm64-simulator (needs the sim-flavored libForgeOSLog
+# built in sim()); on Intel it stays x86_64. The gdx/ObjectAL/freetype/box2d
+# natives already ship arm64+x86_64 simulator slices in their -natives-ios jars.
+SIM_ARCH="x86_64"; [ "$(uname -m)" = "arm64" ] && SIM_ARCH="arm64-simulator"
+
 # app identity: robovm.properties (untracked) is generated from the tracked
 # template using YOUR bundle identifier (APP_ID from .env / environment)
 PROPS="$ROOT/forge-gui-ios/robovm.properties"
@@ -332,6 +356,33 @@ build_module() {
     cd "$ROOT"
 }
 
+# libForgeOSLog.a wraps os_log (a C macro) for the Java side. arm64-device and
+# arm64-simulator objects cannot coexist in one static archive (same cpu type,
+# different LC_BUILD_VERSION platform), so we compile the flavor the current
+# target needs from the committed source. The tracked libs/libForgeOSLog.a is
+# the DEVICE flavor (also used by a plain `mvn robovm:ios-device`); sim() swaps
+# in a simulator flavor and restores the committed lib on exit.
+OSLOG_SRC="$ROOT/forge-gui-ios/oslog_wrapper/ForgeOSLog.m"
+OSLOG_LIB="$ROOT/forge-gui-ios/libs/libForgeOSLog.a"
+
+build_oslog() { # <device|sim>  -> (over)writes $OSLOG_LIB with that flavor
+    local target="$1" work; work="$(mktemp -d)"
+    if [ "$target" = "sim" ]; then
+        local sdk; sdk="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+        xcrun clang -c "$OSLOG_SRC" -o "$work/arm.o" -target arm64-apple-ios11.0-simulator  -isysroot "$sdk"
+        xcrun clang -c "$OSLOG_SRC" -o "$work/x86.o" -target x86_64-apple-ios11.0-simulator -isysroot "$sdk"
+        xcrun libtool -static -o "$work/arm.a" "$work/arm.o"
+        xcrun libtool -static -o "$work/x86.a" "$work/x86.o"
+        lipo -create "$work/arm.a" "$work/x86.a" -output "$OSLOG_LIB"
+    else
+        local sdk; sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
+        xcrun clang -c "$OSLOG_SRC" -o "$work/arm.o" -target arm64-apple-ios11.0 -isysroot "$sdk"
+        xcrun libtool -static -o "$OSLOG_LIB" "$work/arm.o"
+    fi
+    rm -rf "$work"
+    echo "built libForgeOSLog.a ($target):$(lipo -info "$OSLOG_LIB" | sed 's/.*://')"
+}
+
 prep_build() {
     if [ "${SKIP_CACHE_CLEAR:-0}" != "1" ]; then
         rm -rf ~/.robovm/cache
@@ -343,17 +394,93 @@ prep_build() {
     build_module
 }
 
+# Replace an app framework's DEVICE binary with the iOS-SIMULATOR slice from the
+# gdx -natives-ios jar's xcframework. RoboVM 2.3.24 extracts the ios-arm64 (device)
+# slice for an arm64-simulator build, which dyld refuses to load in the simulator.
+_swap_sim_framework() { # <framework> <natives-ios-jar> <app>
+    local fw="$1" jar="$2" app="$3"
+    local sub="META-INF/robovm/ios/libs/$fw.xcframework/ios-arm64_x86_64-simulator/$fw.framework/$fw"
+    local tmp; tmp="$(mktemp -d)"
+    if unzip -o -q "$jar" "$sub" -d "$tmp" 2>/dev/null && [ -f "$tmp/$sub" ]; then
+        cp "$tmp/$sub" "$app/Frameworks/$fw.framework/$fw"
+    else
+        echo "WARN: no iOS-simulator slice for $fw in $(basename "$jar")"
+    fi
+    rm -rf "$tmp"
+}
+
+# Assemble a runnable arm64 iOS-SIMULATOR .app. RoboVM 2.3.24's robovm:ipad-sim
+# goal cannot launch arm64 simulators on Apple Silicon — its device-type table
+# predates them, so it aborts at device selection BEFORE bundling the .app. But
+# its build() already produced the linked binary + a resolved config.xml, so we
+# finish with the standalone AppCompiler and fix up the simulator platform tags
+# the maven launch path would otherwise have handled.
+assemble_arm64_sim_app() {
+    local TMP="$ROOT/forge-gui-ios/target/robovm.tmp"
+    local APP="$TMP/$APP_EXEC.app"
+    local RVHOME CJ
+    RVHOME="$(ls -d "$M2"/com/mobidevelop/robovm/robovm-dist/*/unpacked/robovm-* 2>/dev/null | sort | tail -1)"
+    CJ="$(ls "$M2"/com/mobidevelop/robovm/robovm-dist-compiler/*/robovm-dist-compiler-*.jar 2>/dev/null | sort | tail -1)"
+    [ -f "$TMP/config.xml" ] || { echo "config.xml missing — robovm build did not run"; exit 1; }
+    echo "=== assemble arm64 iOS-simulator .app (RoboVM 2.3.24 can't launch AS sims via maven) ==="
+
+    # 1. resolve robovm.properties placeholders the mojo left in config.xml
+    if sed --version >/dev/null 2>&1; then SEDI=(sed -i); else SEDI=(sed -i ''); fi
+    cp "$TMP/config.xml" "$TMP/config-sim.xml"
+    "${SEDI[@]}" -e "s/\${app.id}/$APP_ID/g" -e "s/\${app.executable}/$APP_EXEC/g" "$TMP/config-sim.xml"
+
+    # 2. bundle the .app via the standalone compiler (no device selection); reuses the AOT cache
+    rm -rf "$APP"; mkdir -p "$APP"
+    ROBOVM_HOME="$RVHOME" java -cp "$CJ" org.robovm.compiler.AppCompiler \
+        -config "$TMP/config-sim.xml" -properties "$PROPS" -skipsign -d "$APP" "$APP_EXEC" \
+        > "$TMP/appcompiler-sim.log" 2>&1 \
+        || { echo "AppCompiler install failed:"; tail -8 "$TMP/appcompiler-sim.log"; exit 1; }
+
+    # 3. re-stamp the main binary as iOS-simulator (AppCompiler writes device LC_VERSION_MIN_IPHONEOS)
+    local SDKV; SDKV="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+    vtool -set-build-version 7 14.0 "$SDKV" -replace -output "$APP/$APP_EXEC.sim" "$APP/$APP_EXEC"
+    mv -f "$APP/$APP_EXEC.sim" "$APP/$APP_EXEC"
+
+    # 4. swap device framework slices -> simulator slices
+    local GDX="$CLONE/com/badlogicgames/gdx"
+    _swap_sim_framework gdx          "$GDX/gdx-platform/1.13.5/gdx-platform-1.13.5-natives-ios.jar"                   "$APP"
+    _swap_sim_framework ObjectAL     "$GDX/gdx-platform/1.13.5/gdx-platform-1.13.5-natives-ios.jar"                   "$APP"
+    _swap_sim_framework gdx-freetype "$GDX/gdx-freetype-platform/1.13.5/gdx-freetype-platform-1.13.5-natives-ios.jar" "$APP"
+    _swap_sim_framework gdx-box2d    "$GDX/gdx-box2d-platform/1.13.5/gdx-box2d-platform-1.13.5-natives-ios.jar"       "$APP"
+
+    # 5. ad-hoc sign (the simulator refuses to launch an unsigned bundle)
+    local f
+    for f in "$APP"/Frameworks/*.framework; do codesign --force --sign - --timestamp=none "$f" >/dev/null 2>&1; done
+    codesign --force --sign - --timestamp=none "$APP" >/dev/null 2>&1
+    echo "assembled: $APP ($(lipo -info "$APP/$APP_EXEC" | sed 's/.*://'), $(vtool -show-build "$APP/$APP_EXEC" 2>/dev/null | grep -i platform | tr -d ' '))"
+}
+
 sim() {
     require_env SIM_UDID
     prep_build
-    echo "=== robovm ipad-sim build (ignore the wrong-simulator install error) ==="
+    # Build against a simulator-flavored libForgeOSLog, restoring the committed
+    # device flavor on exit (even if the build fails). Without this the device
+    # arm64 slice collides with the arm64-simulator target at link time.
+    cp "$OSLOG_LIB" "$OSLOG_LIB.committed"
+    trap 'mv -f "$OSLOG_LIB.committed" "$OSLOG_LIB" 2>/dev/null || true' EXIT
+    build_oslog sim
+    echo "=== robovm ipad-sim build ($SIM_ARCH) ==="
+    # On Apple Silicon (arch=arm64-simulator) this fails at the mojo's device
+    # selection AFTER producing the binary + config.xml — expected; we assemble
+    # the .app ourselves below. On Intel (x86_64) it produces the .app directly.
     (cd "$ROOT/forge-gui-ios" && mvn robovm:ipad-sim --settings "$SETTINGS" \
-        -Dmaven.repo.local="$CLONE" -DskipTests 2>&1 | tail -8) || true
+        -Dmaven.repo.local="$CLONE" -Drobovm.arch="$SIM_ARCH" -DskipTests 2>&1 | tail -8) || true
+    mv -f "$OSLOG_LIB.committed" "$OSLOG_LIB"; trap - EXIT
+
     APP="$ROOT/forge-gui-ios/target/robovm.tmp/$APP_EXEC.app"
+    if [ "$SIM_ARCH" = "arm64-simulator" ]; then
+        assemble_arm64_sim_app
+    fi
     [ -f "$APP/$APP_EXEC" ] || { echo "APP BINARY MISSING - build failed"; exit 1; }
 
     echo "=== install + launch on simulator $SIM_UDID ==="
     xcrun simctl bootstatus "$SIM_UDID" -b || xcrun simctl boot "$SIM_UDID" || true
+    xcrun simctl uninstall "$SIM_UDID" "$APP_ID" 2>/dev/null || true
     xcrun simctl install "$SIM_UDID" "$APP"
     xcrun simctl launch "$SIM_UDID" "$APP_ID"
     echo "logs: xcrun simctl spawn $SIM_UDID log stream --predicate \"process == '$APP_EXEC'\""
