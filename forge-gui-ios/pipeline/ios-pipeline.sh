@@ -91,6 +91,7 @@ fi
 # native JDK is installed; the sim arch is pinned explicitly below, so a native
 # JDK flipping RoboVM's default host arch to arm64-simulator is harmless.
 if [ -z "$JAVA_HOME" ] && [ "$(uname -m)" = "arm64" ] && [ -x /usr/libexec/java_home ]; then
+    _found_arm64_jdk=""
     for _jh in $(/usr/libexec/java_home -V 2>&1 \
             | grep -oE '/Library/Java/JavaVirtualMachines/[^ ]*/Contents/Home' | sort -u); do
         [ -x "$_jh/bin/java" ] || continue
@@ -98,9 +99,18 @@ if [ -z "$JAVA_HOME" ] && [ "$(uname -m)" = "arm64" ] && [ -x /usr/libexec/java_
         if "$_jh/bin/java" -version 2>&1 | grep -qE '"(1[7-9]|[2-9][0-9])'; then
             export JAVA_HOME="$_jh"; export PATH="$_jh/bin:$PATH"
             echo "using native arm64 JDK: $_jh"
+            _found_arm64_jdk=1
             break
         fi
     done
+    # Optional accelerator, not a requirement: the build still works on an
+    # x86_64 JDK, just under Rosetta (slower AOT). Nudge — once — toward native.
+    if [ -z "$_found_arm64_jdk" ]; then
+        echo "note: no native arm64 JDK 17+ found — the AOT compile will run under Rosetta." >&2
+        echo "      For faster builds install the aarch64 (Apple Silicon) Temurin 17, e.g.:" >&2
+        echo "      https://adoptium.net/temurin/releases/?os=mac&arch=aarch64&version=17" >&2
+        echo "      (Homebrew's temurin@17 cask under an Intel brew installs the x86_64 build.)" >&2
+    fi
 fi
 
 # RoboVM simulator arch: match the host so the sim runs NATIVELY (no Rosetta).
