@@ -57,13 +57,17 @@ public class Assets implements Disposable {
     }
 
     /**
-     * FileHandle for a bundled resource. iOS resolves via internal() with the assets-dir prefix
-     * stripped (see HybridFileHandleResolver); every other platform uses absolute() as before.
+     * FileHandle for a resource, mirroring {@link HybridFileHandleResolver} for direct (non-manager)
+     * use — shared by FSkin/FSkinFont. iOS must use internal() with a relative path for bundled
+     * resources (the app bundle lives behind a /var symlink that absolute() fails to realpath inside
+     * the sandbox); only paths under ASSETS_DIR (the read-only bundle) are rerouted, so writable
+     * locations (cache/Documents — downloaded skins, generated .fnt files, planechase pics) keep
+     * absolute(), which works fine in the sandbox. Every other platform keeps absolute() throughout
+     * — Android's assets are extracted to storage and are NOT reachable via internal() APK paths.
      */
-    private static FileHandle getFileHandle(String path) {
-        if (GuiBase.isIOS()) {
-            String relativePath = path.replace(ForgeConstants.ASSETS_DIR, "");
-            return Gdx.files.internal(relativePath);
+    static FileHandle getFileHandle(String path) {
+        if (GuiBase.isIOS() && path.startsWith(ForgeConstants.ASSETS_DIR)) {
+            return Gdx.files.internal(path.substring(ForgeConstants.ASSETS_DIR.length()));
         }
         return Gdx.files.absolute(path);
     }

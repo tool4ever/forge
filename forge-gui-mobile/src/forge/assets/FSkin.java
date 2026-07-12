@@ -31,21 +31,6 @@ public class FSkin {
     private static String preferredName;
     private static boolean loaded = false;
 
-    /**
-     * FileHandle for a bundled resource. iOS must use internal() with a relative path (the app
-     * bundle lives behind a /var symlink that absolute() fails to realpath inside the sandbox);
-     * every other platform keeps the original absolute() behavior — Android's assets are
-     * extracted to storage and are NOT reachable via internal() APK paths.
-     * Only paths under ASSETS_DIR (the read-only bundle) are rerouted: writable locations
-     * (cache/Documents — downloaded skins, generated .fnt files, planechase pics) keep
-     * absolute(), which works fine in the iOS sandbox.
-     */
-    static FileHandle getFileHandle(String path) { //package-visible: FSkinFont shares this
-        if (GuiBase.isIOS() && path.startsWith(ForgeConstants.ASSETS_DIR)) {
-            return Gdx.files.internal(path.substring(ForgeConstants.ASSETS_DIR.length()));
-        }
-        return Gdx.files.absolute(path);
-    }
 
     public static Texture getLogo() {
         if (Forge.isMobileAdventureMode)
@@ -112,7 +97,7 @@ public class FSkin {
         } else {
             if (!isThemeValid(themeDir, themeName, false)) {
                 System.err.println(themeName + " theme is missing some files to work properly.");
-                final FileHandle def = getFileHandle(ForgeConstants.DEFAULT_SKINS_DIR);
+                final FileHandle def = Assets.getFileHandle(ForgeConstants.DEFAULT_SKINS_DIR);
                 if (def.exists() && def.isDirectory() && isThemeValid(def, "", true)) {
                     FSkinFont.deleteCachedFiles();
                     //use default skin if valid
@@ -154,7 +139,7 @@ public class FSkin {
             v2File = Gdx.files.local("fonts/v2");
         } else {
             // Other platforms: the standard location
-            v2File = getFileHandle(ForgeConstants.FONTS_DIR + "v2");
+            v2File = Assets.getFileHandle(ForgeConstants.FONTS_DIR + "v2");
         }
 
         if (v2File == null || !v2File.exists()) {
@@ -178,7 +163,7 @@ public class FSkin {
         }
 
         //ensure skins directory exists
-        final FileHandle dir = getFileHandle(ForgeConstants.CACHE_SKINS_DIR);
+        final FileHandle dir = Assets.getFileHandle(ForgeConstants.CACHE_SKINS_DIR);
         if(preferredDir == null)
         {
             if (!dir.exists() || !dir.isDirectory()) {
@@ -198,7 +183,7 @@ public class FSkin {
                 }
 
                 // Non-default (preferred) skin name and dir.
-                preferredDir = getFileHandle(preferredName.equalsIgnoreCase("default") ? ForgeConstants.BASE_SKINS_DIR + preferredName : ForgeConstants.CACHE_SKINS_DIR + preferredName);
+                preferredDir = Assets.getFileHandle(preferredName.equalsIgnoreCase("default") ? ForgeConstants.BASE_SKINS_DIR + preferredName : ForgeConstants.CACHE_SKINS_DIR + preferredName);
                 if (!preferredDir.exists() || !preferredDir.isDirectory()) {
                     preferredDir.mkdirs();
                 }
@@ -608,14 +593,14 @@ public class FSkin {
      * Gets a FileHandle for a file within the directory where the default skin files should be stored
      */
     public static FileHandle getDefaultSkinFile(String filename) {
-        return getFileHandle(ForgeConstants.DEFAULT_SKINS_DIR + filename);
+        return Assets.getFileHandle(ForgeConstants.DEFAULT_SKINS_DIR + filename);
     }
 
     /**
      * Gets a FileHandle for a file within the planechase cache directory
      */
     public static FileHandle getCachePlanechaseFile(String filename) {
-        return getFileHandle(ForgeConstants.CACHE_PLANECHASE_PICS_DIR + filename);
+        return Assets.getFileHandle(ForgeConstants.CACHE_PLANECHASE_PICS_DIR + filename);
     }
 
     public static FileHandle getSkinDir() {
@@ -630,7 +615,7 @@ public class FSkin {
     public static Array<String> getSkinDirectoryNames() {
         final Array<String> mySkins = new Array<>();
 
-        final FileHandle dir = getFileHandle(ForgeConstants.CACHE_SKINS_DIR);
+        final FileHandle dir = Assets.getFileHandle(ForgeConstants.CACHE_SKINS_DIR);
         for (FileHandle skinFile : dir.list()) {
             String skinName = skinFile.name();
             if (skinName.equalsIgnoreCase(".svn")) { continue; }

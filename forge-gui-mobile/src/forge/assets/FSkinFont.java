@@ -368,9 +368,9 @@ public class FSkinFont {
         String[] translationFilePaths = { ForgeConstants.LANG_DIR + "cardnames-" + langCode + ".txt",
                 ForgeConstants.LANG_DIR + langCode + ".properties" };
         for (String translationFilePath : translationFilePaths) {
-            // iOS resolves bundled resources via internal() (see FSkin.getFileHandle); other
+            // iOS resolves bundled resources via internal() (see Assets.getFileHandle); other
             // platforms keep their original absolute-path reads.
-            FileHandle translationFileHandle = FSkin.getFileHandle(translationFilePath);
+            FileHandle translationFileHandle = Assets.getFileHandle(translationFilePath);
             // Skip if file doesn't exist (e.g., cardnames-en-US.txt doesn't exist because English is the base language)
             if (!translationFileHandle.exists()) {
                 continue;
@@ -413,9 +413,9 @@ public class FSkinFont {
         if (useCjkFont && !Forge.forcedEnglishonCJKMissing) {
             fontName += Forge.locale;
         }
-        // iOS resolves bundled resources via internal() (see FSkin.getFileHandle); other
+        // iOS resolves bundled resources via internal() (see Assets.getFileHandle); other
         // platforms keep the original absolute-path lookup.
-        FileHandle fontFile = FSkin.getFileHandle(ForgeConstants.FONTS_DIR + fontName + ".fnt");
+        FileHandle fontFile = Assets.getFileHandle(ForgeConstants.FONTS_DIR + fontName + ".fnt");
         final boolean[] found = {false};
         if (fontFile != null && fontFile.exists()) {
             FThreads.invokeInEdtNowOrLater(() -> { //font must be initialized on UI thread
