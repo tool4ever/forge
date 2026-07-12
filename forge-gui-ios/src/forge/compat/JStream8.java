@@ -13,8 +13,7 @@ import java8.util.stream.Stream;
  * static initializer reflectively loads {@code java.util.stream.ReferencePipeline}
  * — a class that does not exist on MobiVM — and rethrows, so the first
  * {@code toList()} actually executed on device dies with
- * {@code ExceptionInInitializerError} (observed: the LAN/Tailscale guest-join
- * path {@code NetConnectUtil.getPrioritizedServerUrls}, and {@code BondAi}).
+ * {@code ExceptionInInitializerError}
  * bridge.cfg redirects that stub call to this method instead.
  *
  * <p>Referenced only by the iOS bridge pass — never from source. The body must

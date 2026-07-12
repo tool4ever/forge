@@ -368,8 +368,6 @@ public class FSkinFont {
         String[] translationFilePaths = { ForgeConstants.LANG_DIR + "cardnames-" + langCode + ".txt",
                 ForgeConstants.LANG_DIR + langCode + ".properties" };
         for (String translationFilePath : translationFilePaths) {
-            // iOS resolves bundled resources via internal() (see Assets.getFileHandle); other
-            // platforms keep their original absolute-path reads.
             FileHandle translationFileHandle = Assets.getFileHandle(translationFilePath);
             // Skip if file doesn't exist (e.g., cardnames-en-US.txt doesn't exist because English is the base language)
             if (!translationFileHandle.exists()) {
@@ -413,8 +411,6 @@ public class FSkinFont {
         if (useCjkFont && !Forge.forcedEnglishonCJKMissing) {
             fontName += Forge.locale;
         }
-        // iOS resolves bundled resources via internal() (see Assets.getFileHandle); other
-        // platforms keep the original absolute-path lookup.
         FileHandle fontFile = Assets.getFileHandle(ForgeConstants.FONTS_DIR + fontName + ".fnt");
         final boolean[] found = {false};
         if (fontFile != null && fontFile.exists()) {

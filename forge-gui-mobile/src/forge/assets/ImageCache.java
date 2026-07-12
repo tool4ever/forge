@@ -82,11 +82,11 @@ public class ImageCache {
 
     // iOS fix: Keep Pixmaps alive - iOS Texture requires Pixmap to stay in memory
     // Don't dispose Pixmaps - let GC handle them when memory is low
-    private static final java.util.HashMap<Texture, Pixmap> pixmapCache = new java.util.HashMap<Texture, Pixmap>();
+    private static final HashMap<Texture, Pixmap> pixmapCache = new HashMap<>();
 
     // iOS fix: Reverse mapping from Texture to its file path for ImageRecord lookups
     // Needed because texture.toString() isn't unique (returns dimensions, not path)
-    private static final java.util.IdentityHashMap<Texture, String> textureToPath = new java.util.IdentityHashMap<Texture, String>();
+    private static final java.util.IdentityHashMap<Texture, String> textureToPath = new java.util.IdentityHashMap<>();
 
     // iOS fix: Cache for downloaded image textures (bypassing AssetManager)
     private static final java.util.LinkedHashMap<String, Texture> downloadedTextureCache =
@@ -516,7 +516,7 @@ public class ImageCache {
 
         if (isDownloadedImage) {
             try {
-                java.io.File imageFile = new java.io.File(absolutePath);
+                File imageFile = new File(absolutePath);
                 if (imageFile.exists()) {
                     // Read file as byte array
                     byte[] imageBytes = new byte[(int) imageFile.length()];

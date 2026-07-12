@@ -184,9 +184,6 @@ public class Assets implements Disposable {
 
     public MemoryTrackingAssetManager manager() {
         if (manager == null) {
-            // Use HybridFileHandleResolver that intelligently handles both:
-            // - Absolute paths (for writable cache/Documents files)
-            // - Relative paths (for read-only bundle resources)
             manager = new MemoryTrackingAssetManager(new HybridFileHandleResolver());
         }
         return manager;
@@ -384,8 +381,6 @@ public class Assets implements Disposable {
 
     public Texture getDefaultImage() {
         if (defaultImage == null) {
-            // iOS/Android: bundled resources need internal() relative paths;
-            // the hybrid resolver then routes them correctly in the manager
             FileHandle blankImage = getFileHandle(ForgeConstants.NO_CARD_FILE);
             if (blankImage.exists()) {
                 defaultImage = manager().get(blankImage.path(), Texture.class, false);

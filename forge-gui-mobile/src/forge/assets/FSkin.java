@@ -31,7 +31,6 @@ public class FSkin {
     private static String preferredName;
     private static boolean loaded = false;
 
-
     public static Texture getLogo() {
         if (Forge.isMobileAdventureMode)
             return Forge.getAssets().getTexture(getDefaultSkinFile("adv_logo.png"), true, false);
