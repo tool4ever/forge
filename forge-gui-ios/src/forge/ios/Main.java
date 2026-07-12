@@ -359,13 +359,28 @@ public class Main extends IOSApplication.Delegate {
             log("Failed to redirect System.out/err: " + t.getMessage());
         }
 
+        // Raise RLIMIT_NOFILE before anything opens files/sockets. iOS processes default to a
+        // 256-fd soft limit; this app legitimately holds ~80 (card DB, logs, textures in flight)
+        // and image-download bursts open dozens of sockets on top — one spike past the limit and
+        // EVERYTHING degrades at once: texture opens fail (EMFILE surfaces as GdxRuntimeException
+        // "Couldn't load file" -> blank card frames), and even DNS breaks (getaddrinfo needs an
+        // fd -> "Unable to resolve host"). Raising soft to min(hard, OPEN_MAX) is cheap and safe.
+        FileDescriptorLimit.raise();
+
         // Crash reporting — mirrors the desktop launcher's Sentry setup (same project DSN).
         // Events are only SENT when the user's USE_SENTRY preference allows it
         // (BugReporter.isSentryEnabled); the init itself is passive. Never let telemetry
         // setup break app launch.
         try {
             io.sentry.Sentry.init(options -> {
-                options.setEnableExternalConfiguration(true);
+                // Do NOT scan the classpath for config (desktop leaves this on; on a JVM it's
+                // harmless). On iOS both the sentry.properties probe (external configuration)
+                // and the sentry-debug-meta.properties probe open EVERY bundled jar via the
+                // ClassLoader and the JarFile cache pins them open — 87 jars x 2 fds ate ~177
+                // of the 256-fd soft limit and starved the whole app (blank textures, failed
+                // DNS). There is no external config on iOS anyway: the DSN is set right here.
+                options.setEnableExternalConfiguration(false);
+                options.setDebugMetaLoader(io.sentry.internal.debugmeta.NoOpDebugMetaLoader.getInstance());
                 options.setRelease(forge.util.BuildInfo.getVersionString());
                 options.setEnvironment("iOS");
                 options.setTag("Platform", "iOS/RoboVM");
