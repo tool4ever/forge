@@ -385,9 +385,8 @@ public abstract class ImageFetcher {
         if (sleeveArtKey == null || sleeveArtKey.length() < 2 || !sleeveArtKey.startsWith(ImageKeys.CARD_PREFIX)) {
             return;
         }
-        if (!FModel.getPreferences().getPrefBoolean(ForgePreferences.FPref.UI_ENABLE_ONLINE_IMAGE_FETCHER)) {
-            return;
-        }
+        // Not gated on UI_ENABLE_ONLINE_IMAGE_FETCHER: that suppresses passive auto-download of card
+        // art, but choosing a card-art sleeve is an explicit request, so fetch even when it's off
         final PaperCard paperCard = ImageUtil.getPaperCardFromImageKey(sleeveArtKey);
         if (paperCard == null || paperCard.getRules().isCustom() || paperCard.getArtist().isEmpty()) {
             return;
