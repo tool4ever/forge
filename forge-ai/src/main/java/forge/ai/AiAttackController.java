@@ -230,8 +230,8 @@ public class AiAttackController {
                 if (opp.cantLoseForZeroOrLessLife()) {
                     score -= 50;
                 }
-                threatScores.put(opp, score);
             }
+            threatScores.put(opp, score);
         }
         // round away slightly so a single land drop doesn't mean players with earlier turn order are predictably attacked
         // grows with game age since by then threat ranges become less narrow
