@@ -1,5 +1,6 @@
 package forge.ai.ability;
 
+import com.google.common.collect.Iterables;
 import forge.ai.*;
 import forge.card.CardStateName;
 import forge.card.CardTypeView;
@@ -149,6 +150,11 @@ public class PlayAi extends SpellAbilityAi {
     @Override
     public Card chooseSingleCard(final Player ai, final SpellAbility sa, Iterable<Card> options,
             final boolean isOptional, Player targetedPlayer, Map<String, Object> params) {
+        // redundant when resolving - the AI will get asked by the effect API anyway
+        if (ai.getGame().getStack().isResolving(sa.getHostCard()) && Iterables.size(options) == 1) {
+            return Iterables.get(options, 0);
+        }
+
         final CardStateName state;
         if (sa.hasParam("CastTransformed")) {
             state = CardStateName.Backside;
@@ -196,19 +202,7 @@ public class PlayAi extends SpellAbilityAi {
 
                     spell = (Spell) spell.copyWithManaCostReplaced(spell.getActivatingPlayer(), abCost);
                 }
-                if (sa.isKeyword(Keyword.MADNESS) && !spell.usesTargeting()) {
-                    // The card is already in exile and goes to the graveyard if it is not cast: the usual "is this a
-                    // good moment" heuristics have nothing left to decide, only whether the madness cost can be paid
-                    return ComputerUtilCost.canPayCost(spell, ai, true);
-                }
-                if (AiPlayDecision.WillPlay == ((PlayerControllerAi)ai.getController()).getAi().canPlayFromEffectAI(spell, !(isOptional || sa.hasParam("Optional")), true)) {
-                    // Before accepting, see if the spell has a valid number of targets (it should at this point).
-                    // Proceeding past this point if the spell is not correctly targeted will result
-                    // in "Failed to add to stack" error and the card disappearing from the game completely.
-                    if (!spell.isTargetNumberValid() || !ComputerUtilCost.canPayCost(spell, ai, true)) {
-                        // if we won't be able to pay the cost, don't choose the card
-                        return false;
-                    }
+                if (AiPlayDecision.WillPlay == ((PlayerControllerAi)ai.getController()).getAi().canPlayFromEffectAI(spell, !(isOptional || sa.hasParam("Optional")), false)) {
                     return true;
                 }
             }
@@ -219,11 +213,7 @@ public class PlayAi extends SpellAbilityAi {
             options.forEach(c -> c.changeToState(CardStateName.Original));
         }
 
-        final Card best = ComputerUtilCard.getBestAI(tgtCards);
-        if (sa.usesTargeting() && !sa.isTargetNumberValid()) {
-            sa.getTargets().add(best);
-        }
-        return best;
+        return ComputerUtilCard.getBestAI(tgtCards);
     }
 
     private static List<Card> getPlayableCards(SpellAbility sa, Player ai) {

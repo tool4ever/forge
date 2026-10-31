@@ -1885,7 +1885,7 @@ public class AiController {
         }
 
         if (saList.isEmpty()) {
-            saList = ComputerUtilAbility.getSpellAbilities(cards, player);
+            saList = ComputerUtilAbility.getSpellAbilities(cards, player, true);
         }
 
         // pieces of the deck's combos stay in the list even when the script says AI:RemoveDeck:All:

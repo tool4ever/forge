@@ -85,10 +85,13 @@ public class ComputerUtilAbility {
     }
 
     public static List<SpellAbility> getSpellAbilities(final CardCollectionView all, final Player activator) {
+        return getSpellAbilities(all, activator, false);
+    }
+    public static List<SpellAbility> getSpellAbilities(final CardCollectionView all, final Player activator, final boolean usableNow) {
         final List<SpellAbility> spellAbilities = Lists.newArrayList();
         for (final Card c : all) {
             Multimap<SpellAbility, SpellAbility> unhiddenAltCost = ArrayListMultimap.create();
-            List<SpellAbility> possible = c.getAllPossibleAbilities(activator, false, unhiddenAltCost);
+            List<SpellAbility> possible = c.getAllPossibleAbilities(activator, usableNow, unhiddenAltCost);
             for (SpellAbility sa : unhiddenAltCost.keySet()) {
                 if (possible.contains(sa)) {
                     // when SA can also be played as basic exclude its AltCost to prevent redundant check later

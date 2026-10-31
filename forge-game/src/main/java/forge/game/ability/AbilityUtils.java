@@ -628,12 +628,6 @@ public class AbilityUtils {
                 }
                 val = playerXCount(getDefinedPlayers(card, key, sa), calcX[1], card, ability);
             }
-            else if (calcX[0].startsWith("TriggeredPlayer") || calcX[0].startsWith("TriggeredTarget")
-                    || calcX[0].startsWith("TriggeredDefendingPlayer") || calcX[0].startsWith("TriggeredActivator")) {
-                final SpellAbility root = sa.getRootAbility();
-                Object o = root.getTriggeringObject(AbilityKey.fromString(calcX[0].substring(9)));
-                val = o instanceof Player ? playerXProperty((Player) o, calcX[1], card, ability) : 0;
-            }
             else if (calcX[0].equals("TriggeredSpellAbility") || calcX[0].equals("SpellTargeted")) {
                 final SpellAbility sat = Iterables.getFirst(getDefinedSpellAbilities(card, calcX[0], sa), null);
                 val = sat == null ? 0 : xCount(sat.getHostCard(), calcX[1], sat);
@@ -699,11 +693,14 @@ public class AbilityUtils {
                     list = IterableUtil.filter((Iterable<?>) root.getTriggeringObjects().getOrDefault(
                             (AbilityKey.fromString(calcX[0].substring(14))), new CardCollection()), Card.class);
                 }
-                // CardTriggered<AbilityKey> used to bypass AbilityKeys that could also be Player above
-                else if (calcX[0].startsWith("Triggered") || (calcX[0].startsWith("CardTriggered"))) {
+                else if (calcX[0].startsWith("Triggered")) {
                     final SpellAbility root = sa.getRootAbility();
-                    final int s = calcX[0].startsWith("Triggered") ? 9 : 13;
-                    list = new CardCollection((Card) root.getTriggeringObject(AbilityKey.fromString(calcX[0].substring(s))));
+                    Object o = root.getTriggeringObject(AbilityKey.fromString(calcX[0].substring(9)));
+                    if (o instanceof Player p) {
+                        val = playerXProperty(p, calcX[1], card, ability);
+                    } else {
+                        list = new CardCollection((Card) o);
+                    }
                 }
                 else if (calcX[0].startsWith("Replaced")) {
                     final SpellAbility root = sa.getRootAbility();
