@@ -1,12 +1,10 @@
 package forge.game.player;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import forge.game.card.Card;
 import forge.game.card.CardCollection;
 import forge.game.zone.ZoneType;
 import forge.util.Aggregates;
@@ -30,31 +28,25 @@ public class PlayerCollection extends FCollection<Player> {
 
     // card collection functions
     public final CardCollection getCardsIn(ZoneType zone) {
-        final CardCollection result = new CardCollection(0);
+        CardCollection result = new CardCollection();
         for (Player p : this) {
-            // one zone type: the cards of different players are distinct, no duplicate check needed
-            result.addAllUnique(p.getCardsIn(zone));
+            result.addAll(p.getCardsIn(zone));
         }
         return result;
     }
 
     public final CardCollection getCardsIn(Iterable<ZoneType> zones) {
-        final CardCollection result = new CardCollection(0);
+        CardCollection result = new CardCollection();
         for (Player p : this) {
-            final Collection<Card> cards = p.getCardsIn(zones);
-            final int s = cards.size();
-            if (s > 0) {
-                result.ensureCapacity(result.size() + s);
-                result.addAll(cards);
-            }
+            result.addAll(p.getCardsIn(zones));
         }
         return result;
     }
     
     public final CardCollection getCreaturesInPlay() {
-        final CardCollection result = new CardCollection(0);
+        CardCollection result = new CardCollection();
         for (Player p : this) {
-            result.addAllUnique(p.getCreaturesInPlay());
+            result.addAll(p.getCreaturesInPlay());
         }
         return result;
     }
