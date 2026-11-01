@@ -72,8 +72,27 @@ public class GameCopier {
         return origGame;
     }
 
+    /**
+     * Cuts every link to the game this copy was made from (and the maps between the two). Only the copied game stays
+     * alive. For search nodes that are kept for a long time; after this {@link #find} and {@link #reverseFind} find
+     * nothing, and {@link #makeCopy} must not be called again.
+     */
+    public void release() {
+        if (gameObjectMap != null) {
+            releasedGame = gameObjectMap.getGame();
+        }
+        origGame = null;
+        playerMap = HashBiMap.create();
+        cardMap = HashBiMap.create();
+        stackMap.clear();
+        gameObjectMap = null;
+        snapshot = null;
+    }
+
+    private Game releasedGame;
+
     public Game getCopiedGame() {
-        return gameObjectMap.getGame();
+        return gameObjectMap != null ? gameObjectMap.getGame() : releasedGame;
     }
 
     public Game makeCopy() {
@@ -580,7 +599,7 @@ public class GameCopier {
     }
 
     public <T extends GameObject> T find(T o) {
-        if (origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
+        if (origGame != null && origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
             return (T) snapshot.find(o);
         }
 
@@ -607,7 +626,7 @@ public class GameCopier {
         return result;
     }
     public GameObject reverseFind(GameObject o) {
-        if (origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
+        if (origGame != null && origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
             return snapshot.reverseFind(o);
         }
 
