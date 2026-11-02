@@ -115,12 +115,15 @@ public class Game {
 
     // True for the games the AI copies to play out its choices (rollouts): nothing that only matters for the real
     // game (like taking a snapshot to roll an AI cast back) has to be done there.
-    private boolean simulationCopy = false;
-    public boolean isSimulationCopy() {
+    private Game simulationCopy = null;
+    public Game getSimulationCopy() {
         return simulationCopy;
     }
-    public void markAsSimulationCopy() {
-        simulationCopy = true;
+    public void markAsSimulationCopy(Game original) {
+        if (original.getSimulationCopy() != null) {
+            original = original.getSimulationCopy();
+        }
+        simulationCopy = original;
     }
     // While this is false here, its really set by the Match/Preferences
 

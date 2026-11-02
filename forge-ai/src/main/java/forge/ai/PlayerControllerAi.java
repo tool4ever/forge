@@ -249,12 +249,10 @@ public class PlayerControllerAi extends PlayerController {
                         if (!cMain.getRules().getType().sharesCardTypeWith(cSide.getRules().getType())) {
                             continue; // Only equivalent types allowed
                         }
-                    } else {
-                        if ((cMain.getRules().getType().isCreature() && !cSide.getRules().getType().isCreature())
-                                || (cSide.getRules().getType().isCreature()) && !cMain.getRules().getType().isCreature()) {
-                            if (!(sbPlaneswalkerException && (cMain.getRules().getType().isPlaneswalker() || cSide.getRules().getType().isPlaneswalker()))) {
-                                continue; // Creature exception: only trade a creature for another creature unless planeswalkers are allowed as a replacement
-                            }
+                    } else if ((cMain.getRules().getType().isCreature() && !cSide.getRules().getType().isCreature())
+                            || (cSide.getRules().getType().isCreature()) && !cMain.getRules().getType().isCreature()) {
+                        if (!(sbPlaneswalkerException && (cMain.getRules().getType().isPlaneswalker() || cSide.getRules().getType().isPlaneswalker()))) {
+                            continue; // Creature exception: only trade a creature for another creature unless planeswalkers are allowed as a replacement
                         }
                     }
 
@@ -976,7 +974,7 @@ public class PlayerControllerAi extends PlayerController {
      */
     public boolean playWithRollback(final SpellAbility sa, final Consumer<SpellAbility> chooseTargets) {
         final Game game = player.getGame();
-        final boolean guarded = AI_ROLLBACK && !game.isSimulationCopy() && !sa.isCopied() && !sa.isTrigger() && usesTargeting(sa);
+        final boolean guarded = AI_ROLLBACK && game.getSimulationCopy() == null && !sa.isCopied() && !sa.isTrigger() && usesTargeting(sa);
         final UndoManager.Mark mark = guarded ? game.getUndoManager().markForRollback(game) : null;
         final int hostId = sa.getHostCard().getId();
         final int failedBefore = game.getStack().getIllegalAdditionCount(sa.getHostCard());
