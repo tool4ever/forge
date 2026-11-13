@@ -9,7 +9,6 @@ import org.apache.commons.lang3.time.StopWatch;
 
 import forge.LobbyPlayer;
 import forge.ai.AiProfileUtil;
-import forge.ai.simulation.FlatMonteCarloStats;
 import forge.deck.Deck;
 import forge.deck.DeckGroup;
 import forge.deck.io.DeckSerializer;
@@ -112,7 +111,6 @@ public class SimulateMatch {
                 return;
             }
         }
-        FlatMonteCarloStats.reset();
 
         Long seed = null;
         if (params.containsKey("s")) {
@@ -213,9 +211,6 @@ public class SimulateMatch {
             }
         }
 
-        if (Boolean.TRUE.equals(flatMonteCarlo)) {
-            System.out.println(FlatMonteCarloStats.summary());
-        }
         System.out.flush();
     }
 
