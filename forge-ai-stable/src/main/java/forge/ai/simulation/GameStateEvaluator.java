@@ -251,8 +251,9 @@ public class GameStateEvaluator {
     }
 
     public int evalCard(Game game, Player aiPlayer, Card c) {
-        // TODO: These should be based on other considerations - e.g. in relation to opponents state.
-        if (c.isCreature() {
+        // try to ignore temporary animate without payoff
+        if (c.isCreature() &&
+                (c.getOriginalType().isCreature() || game.getSimulationCopy() == null || game.getSimulationCopy().findById(c.getId()).isCreature())) {
             return eval.evaluateCreature(c);
         }
         if (c.isLand()) {
