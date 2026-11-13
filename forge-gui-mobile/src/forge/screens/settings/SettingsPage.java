@@ -459,14 +459,7 @@ public class SettingsPage extends TabPage<SettingsScreen> {
             Forge.getLocalizer().getMessage("nlStackCreatures")), 1);
         lstSettings.addItem(new BooleanSetting(FPref.UI_AUTO_AIDECK_SELECTION,
             Forge.getLocalizer().getMessage("lblAutoAIDeck"),
-            Forge.getLocalizer().getMessage("nlAutoAIDeck")) {
-                @Override
-                public void select() {
-                    super.select();
-                    //update
-                    Forge.autoAIDeckSelection = FModel.getPreferences().getPrefBoolean(FPref.UI_AUTO_AIDECK_SELECTION);
-                }
-            }, 1);
+            Forge.getLocalizer().getMessage("nlAutoAIDeck")), 1);
         // Preffered Prompt button
         lstSettings.addItem(new BooleanSetting(FPref.UI_REVERSE_PROMPT_BUTTON,
             Forge.getLocalizer().getMessage("lblReversePromptButton"),

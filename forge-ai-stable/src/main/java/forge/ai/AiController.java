@@ -1664,7 +1664,7 @@ public class AiController {
         }
 
         if (saList.isEmpty()) {
-            saList = ComputerUtilAbility.getSpellAbilities(cards, player);
+            saList = ComputerUtilAbility.getSpellAbilities(cards, player, true);
         }
 
         saList.removeIf(spellAbility -> {
