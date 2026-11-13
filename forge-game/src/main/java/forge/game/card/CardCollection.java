@@ -13,12 +13,6 @@ public class CardCollection extends FCollection<Card> implements CardCollectionV
      */
     public static final CardCollectionView EMPTY = new EmptyCardCollection();
 
-    public CardCollection(int estimatedSize) {
-        super(estimatedSize);
-    }
-    public void ensureCapacity(final int minCapacity) {
-        super.ensureCapacity(minCapacity);
-    }
     /**
      * Get the view corresponding to an {@link Iterable} of {@link Card}
      * objects.

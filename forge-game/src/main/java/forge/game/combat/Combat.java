@@ -128,11 +128,6 @@ public class Combat {
         attackConstraints = new AttackConstraints(this);
     }
 
-    private boolean isRealCombat() {
-        final Combat gc = getAttackingPlayer().getGame().getCombat();
-        return gc == null || gc == this;   // only skip while ANOTHER combat is the real one
-    }
-
     public void initConstraints() {
         attackableEntries.get().clear();
         // Create keys for all possible attack targets
@@ -286,9 +281,7 @@ public class Combat {
         } else {
             band.addAttacker(c);
         }
-        if (isRealCombat()) {
-            c.updateAttackingForView();
-        }
+        c.updateAttackingForView();
     }
 
     public final GameEntity getDefenderByAttacker(final Card c) {
@@ -406,9 +399,7 @@ public class Combat {
         if (blockersOrderedForDamageAssignment.get().containsKey(attacker)) {
             addBlockerToDamageAssignmentOrder(attacker, blocker);
         }
-        if (isRealCombat()) {
-            blocker.updateBlockingForView();
-        }
+        blocker.updateBlockingForView();
     }
 
     // remove blocker from specific attacker
@@ -418,18 +409,14 @@ public class Combat {
         if (cc != null) {
             cc.remove(blocker);
         }
-        if (isRealCombat()) {
-            blocker.updateBlockingForView();
-        }
+        blocker.updateBlockingForView();
     }
 
     // remove blocker from everywhere
     public final void undoBlockingAssignment(final Card blocker) {
         CardCollection toRemove = new CardCollection(blocker);
         blockedBands.get().values().removeAll(toRemove);
-        if (isRealCombat()) {
-            blocker.updateBlockingForView();
-        }
+        blocker.updateBlockingForView();
     }
 
     public final CardCollection getAllBlockers() {
@@ -638,9 +625,7 @@ public class Combat {
         if (ab != null) {
             unregisterAttacker(c, ab);
             ab.removeAttacker(c);
-            if (isRealCombat()) {
-                c.updateAttackingForView();
-            }
+            c.updateAttackingForView();
             return;
         }
 
@@ -671,9 +656,7 @@ public class Combat {
 
         // remove card from map
         while (blockedBands.get().values().remove(c));
-        if (isRealCombat()) {
-            c.updateBlockingForView();
-        }
+        c.updateBlockingForView();
     }
 
     public final boolean removeAbsentCombatants() {
