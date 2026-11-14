@@ -24,7 +24,7 @@ There will be no releases for now, though everyone is welcome to give feedback i
 
 | Slop suspect | Rationale | Priority |
 | - | - | - |
-| e6f4f67a | one of the first more complex parts was merged completely unreviewed. it had no regard for existing systems or other PR in progress, the first iteration broke netplay support and quickly caused memory problems for mobile users | B |
+| e6f4f67a | one of the first more complex parts was merged completely unreviewed. it had no regard for existing systems or other PR in progress, the first iteration broke netplay support and quickly caused memory problems for mobile users. when pointed out to the author he disappointingly responded rather aggressive and unwilling to reconsider such rush jobs | B |
 | dc72214 | extreme test bloat + hides bugs | A |
 | 9c77436 | adding overhead for artificial problems coming from wrong method usage | A |
 | 1406f4e | incomplete and badly written fix at absolutely the wrong layer | A |
