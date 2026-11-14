@@ -234,8 +234,7 @@ public class AnimateEffect extends AnimateEffectBase {
             sb.append(" ");
         }
 
-        // nothing to name yet (Defined$ Remembered before the earlier part of the ability has resolved): "It", not a missing subject
-        sb.append(sa.hasParam("DefinedDesc") ? sa.getParam("DefinedDesc") : tgts.isEmpty() ? "It" : Lang.joinHomogenous(tgts));
+        sb.append(sa.hasParam("DefinedDesc") ? sa.getParam("DefinedDesc") : Lang.joinHomogenous(tgts));
         sb.append(" ");
         int initial = sb.length();
         boolean becomes = false;

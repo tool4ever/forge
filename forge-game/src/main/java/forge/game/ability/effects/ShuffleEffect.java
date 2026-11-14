@@ -1,5 +1,6 @@
 package forge.game.ability.effects;
 
+import java.util.Iterator;
 import java.util.List;
 
 import forge.game.ability.SpellAbilityEffect;
@@ -29,7 +30,17 @@ public class ShuffleEffect extends SpellAbilityEffect {
 
         final List<Player> tgtPlayers = getTargetPlayers(sa);
 
-        sb.append(playersOrDescribed(sa, tgtPlayers, "Defined"));
+        if (tgtPlayers.size() > 0) {
+            final Iterator<Player> it = tgtPlayers.iterator();
+            while (it.hasNext()) {
+                sb.append(it.next().getName());
+                if (it.hasNext()) {
+                    sb.append(" and ");
+                }
+            }
+        } else {
+            sb.append("Error - no target players for Shuffle. ");
+        }
         sb.append(" shuffle");
         if (tgtPlayers.size() > 1) {
             sb.append(" their libraries");

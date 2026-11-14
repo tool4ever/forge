@@ -29,14 +29,15 @@ public class RearrangeTopOfLibraryEffect extends SpellAbilityEffect {
 
         final StringBuilder ret = new StringBuilder();
         ret.append("Look at the top ");
-        ret.append(numCards == 1 ? "card" : numCards + " cards");
-        ret.append(" of ");
-        if (tgtPlayers.isEmpty()) {
-            ret.append("target player's");
-        } else {
-            ret.append(Lang.joinHomogenous(tgtPlayers.stream().map(p -> Lang.getInstance().getPossesive(p.getName())).collect(java.util.stream.Collectors.toList()), null, "and"));
+        ret.append(numCards);
+        ret.append(" cards of ");
+        for (final Player p : tgtPlayers) {
+            ret.append(Lang.getInstance().getPossesive(p.getName()));
+            ret.append(" & ");
         }
-        ret.append(" library. Then put ").append(numCards == 1 ? "it" : "them").append(" back in any order. ");
+        ret.delete(ret.length() - 3, ret.length());
+
+        ret.append(" library. Then put them back in any order.");
 
         if (shuffle) {
             ret.append("You may have ");

@@ -40,15 +40,11 @@ public class ChangeZoneAllEffect extends SpellAbilityEffect {
 
         final String[] desc = sa.getDescription().split(":");
 
-        String text = desc.length > 1 ? desc[1] : desc[0];
-        if (sa.getSubAbility() != null) {
-            // the card's whole text is the description of its first part: the parts after it describe themselves
-            final int end = text.indexOf(". ");
-            if (end > 0) {
-                text = text.substring(0, end + 1);
-            }
+        if (desc.length > 1) {
+            return desc[1];
+        } else {
+            return desc[0];
         }
-        return text;
     }
 
     @Override

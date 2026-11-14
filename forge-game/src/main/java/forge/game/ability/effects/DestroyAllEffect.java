@@ -15,7 +15,6 @@ import forge.game.player.Player;
 import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
 import forge.util.Localizer;
-import forge.util.Lang;
 import forge.util.TextUtil;
 
 public class DestroyAllEffect extends SpellAbilityEffect {
@@ -28,16 +27,10 @@ public class DestroyAllEffect extends SpellAbilityEffect {
 
         final StringBuilder sb = new StringBuilder();
         final boolean noRegen = sa.hasParam("NoRegen");
-        String what = sa.getParamOrDefault("ValidDescription", "");
-        if (what.isEmpty()) {
-            final String valid = sa.getParamOrDefault("ValidCards", "Permanent");
-            what = Lang.joinHomogenous(java.util.Arrays.stream(valid.split(","))
-                    .map(v -> Lang.getInstance().formatValidDesc(v, true, false)).collect(java.util.stream.Collectors.toList()), null, "and");
-        }
-        sb.append("Destroy all ").append(what.replaceFirst("(?i)^all ", "")).append(".");
+        sb.append(sa.getHostCard().getDisplayName()).append(" - Destroy permanents.");
 
         if (noRegen) {
-            sb.append(" They can't be regenerated.");
+            sb.append(" They can't be regenerated");
         }
 
         return sb.toString();

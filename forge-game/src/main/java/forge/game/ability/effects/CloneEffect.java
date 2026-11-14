@@ -17,8 +17,6 @@ import forge.util.collect.FCollection;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import forge.util.Lang;
-
 import java.util.List;
 
 public class CloneEffect extends SpellAbilityEffect {
@@ -45,16 +43,7 @@ public class CloneEffect extends SpellAbilityEffect {
         }
 
         sb.append(tgtCard);
-        if (cardToCopy == null) {
-            // chosen on resolution ("a creature you control", ...)
-            final String[] valid = sa.usesTargeting() ? sa.getTargetRestrictions().getValidTgts() : null;
-            final String choice = sa.hasParam("ChoiceTitle") ? sa.getParam("ChoiceTitle").toLowerCase().replaceFirst("^choose ", "")
-                    : valid != null && valid.length > 0 ? Lang.getInstance().describeValidList(String.join(",", valid))
-                    : sa.hasParam("Choices") ? Lang.getInstance().describeValidList(sa.getParam("Choices")) : "permanent";
-            sb.append(" becomes a copy of ").append(Lang.startsWithVowel(choice) ? "an " : "a ").append(choice).append(".");
-        } else {
-            sb.append(" becomes a copy of ").append(cardToCopy).append(".");
-        }
+        sb.append(" becomes a copy of ").append(cardToCopy).append(".");
 
         return sb.toString();
     }

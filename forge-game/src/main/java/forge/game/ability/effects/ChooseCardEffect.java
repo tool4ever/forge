@@ -30,10 +30,9 @@ public class ChooseCardEffect extends SpellAbilityEffect {
         final int numCards = sa.hasParam("Amount") ?
                 AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("Amount"), sa) : 1;
 
-        final boolean noPlayer = getTargetPlayers(sa).isEmpty();
-        sb.append(noPlayer ? "You" : Lang.joinHomogenous(getTargetPlayers(sa))).append(" ");
+        sb.append(Lang.joinHomogenous(getTargetPlayers(sa))).append(" ");
         if (sa.hasParam("Mandatory")) {
-            sb.append(!noPlayer && getTargetPlayers(sa).size() == 1 ? "chooses " : "choose ");
+            sb.append(getTargetPlayers(sa).size() == 1 ? "chooses " : "choose ");
         } else {
             sb.append("may choose ");
         }
