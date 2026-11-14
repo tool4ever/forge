@@ -14,13 +14,13 @@ Therefore this branch aims to be more conservative in keeping vibecode: implemen
 
 Additionally semi-official/rare abilities that unnecessarily put a heavy strain on the engine may get reworked into slightly more hardcoded variants - e.g. just because the card *Topsy Turvy* is supported not all games should have to suffer extra checks for it.
 
-While parity with upstream will be attempted to remain high, possibly and depending on the speed of slop merges especially some GUI features could become excluded from this branch in the future.
+While parity with upstream will be attempted to remain high, possibly and depending on the speed of slop merges especially some GUI features could be delayed on this branch while quality control is still in progress.
 That means this approach should be most useful for other downstream consumers who just need a reliable engine to build around - or if you simply want less risk of being a guinea pig for LLM hallucinations.
 
 There will be no releases for now, though everyone is welcome to give feedback if they have a problem specific to this build.
 
 <details>
-<summary>Overview of important fork amendments</summary>
+<summary>Overview of important fork amendments (or future candidates)</summary>
 
 | Slop suspect | Rationale | Priority |
 | - | - | - |
@@ -29,6 +29,8 @@ There will be no releases for now, though everyone is welcome to give feedback i
 | 9c77436 | adding overhead for artificial problems coming from wrong method usage | A |
 | 1406f4e | incomplete and badly written fix at absolutely the wrong layer | A |
 | 082e9ff | implements an unnecessary cache for tokens. at this point it seems like either the own code just doesn't get checked anymore or the LLM dumping has become too tempting to slow down | A |
+| 5a7f95b | Once again touching way too many files for different reasons, only kept the typo fixes in scripts | B |
+| excessive pattern of obscure named and often single-use static fields | each LLM session invents its own tweak layer, nobody guides it towards a shared architecture | C |
 | anything relying on try-catch usage everywhere | author doesn't understand why his code fails | B |
 | Flat MC | some good ideas but also very unhealthy amounts of vibecode with little manual testing, which then lead to additional bandaids slapped on top - e.g. 8360afa<br>but the nail in the coffin is it not even fully respecting the preference - e.g. `discardTargetAI`<br>-> this leads to a mix that actually worsens AI behaviour while also making it harder to debug user reports<br><br>some "highlights":<br>- fragile tests due to relying on reflection (without a good reason)<br>- rule-breaking script refactors | C |
 
