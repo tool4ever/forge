@@ -37,7 +37,9 @@ import forge.game.replacement.ReplacementType;
 import forge.game.spellability.AbilityManaPart;
 import forge.game.spellability.AbilitySub;
 import forge.game.spellability.SpellAbility;
+import forge.game.staticability.StaticAbility;
 import forge.game.staticability.StaticAbilityManaConvert;
+import forge.game.staticability.StaticAbilityMode;
 import forge.game.trigger.Trigger;
 import forge.game.trigger.TriggerType;
 import forge.game.zone.Zone;
@@ -52,6 +54,24 @@ import java.util.stream.Collectors;
 
 public class ComputerUtilMana {
     private final static boolean DEBUG_MANA_PAYMENT = false;
+
+    /**
+     * A spell's own mana conversion (Prismatic: "spend mana as though it were mana of any color") belongs to a static
+     * ability that only works while the spell is on the stack. The AI asks whether it can pay while the card is still in
+     * its hand, so the conversion is applied from the card itself, or the AI never casts it without the right colors.
+     */
+    private static void applyOwnManaConvert(final ManaPool pool, final Player ai, final SpellAbility sa, final boolean effect) {
+        final Card host = sa.getHostCard();
+        if (effect || host == null || !sa.isSpell() || host.isInZone(ZoneType.Stack)) {
+            return;
+        }
+        for (final StaticAbility stAb : host.getStaticAbilities()) {
+            if (stAb.checkMode(StaticAbilityMode.ManaConvert) && "Stack".equals(stAb.getParam("EffectZone"))
+                    && StaticAbilityManaConvert.checkManaConvert(stAb, ai, host, sa)) {
+                AbilityUtils.applyManaColorConversion(pool, stAb.getParam("ManaConversion"));
+            }
+        }
+    }
 
     public static boolean canPayManaCost(ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean effect) {
         //check copy of cost so it doesn't modify the exist cost being paid
@@ -245,10 +265,12 @@ public class ComputerUtilMana {
                 return ability1.compareTo(ability2);
             });
 
-            // stable partition: filter abilities to the back (or the front when they're needed)
+            // stable partition: filters to the back (or the front when needed), and color fixers always last
             final List<SpellAbility> filters = new ArrayList<>();
-            newAbilities.removeIf(m -> getManaToActivate(m) > 0 && filters.add(m));
+            final List<SpellAbility> fixers = new ArrayList<>();
+            newAbilities.removeIf(m -> getManaToActivate(m) > 0 && (onlyFixesColor(m) ? fixers : filters).add(m));
             newAbilities.addAll(filtersFirst ? 0 : newAbilities.size(), filters);
+            newAbilities.addAll(fixers);
 
             if (DEBUG_MANA_PAYMENT) {
                 System.out.println("Sorted Abilities: " + newAbilities);
@@ -271,22 +293,8 @@ public class ComputerUtilMana {
                     final List<SpellAbility> prefSortedAbilities = new ArrayList<>(newAbilities);
                     final List<SpellAbility> otherSortedAbilities = new ArrayList<>(newAbilities);
 
-                    prefSortedAbilities.sort((ability1, ability2) -> {
-                        if (ability1.getManaPart().mana(ability1).contains(preferredShard))
-                            return -1;
-                        else if (ability2.getManaPart().mana(ability2).contains(preferredShard))
-                            return 1;
-
-                        return 0;
-                    });
-                    otherSortedAbilities.sort((ability1, ability2) -> {
-                        if (ability1.getManaPart().mana(ability1).contains(preferredShard))
-                            return 1;
-                        else if (ability2.getManaPart().mana(ability2).contains(preferredShard))
-                            return -1;
-
-                        return 0;
-                    });
+                    prefSortedAbilities.sort(Comparator.comparing((SpellAbility ab) -> !ab.getManaPart().mana(ab).contains(preferredShard)));
+                    otherSortedAbilities.sort(Comparator.comparing((SpellAbility ab) -> ab.getManaPart().mana(ab).contains(preferredShard)));
 
                     final List<SpellAbility> finalAbilities = new ArrayList<>();
                     for (int i = 0; i < preferredShardAmount && i < prefSortedAbilities.size(); i++) {
@@ -678,6 +686,7 @@ public class ComputerUtilMana {
                 AbilityUtils.applyManaColorConversion(manapool, sa.getParam("ManaConversion"));
             }
             StaticAbilityManaConvert.manaConvert(manapool, ai, sa.getHostCard(), effect && !sa.isCastFromPlayEffect() ? null : sa);
+            applyOwnManaConvert(manapool, ai, sa, effect);
         }
 
         // not worth checking if it makes sense to not spend floating first
@@ -1009,7 +1018,9 @@ public class ComputerUtilMana {
             }
         }
         final int held = handColors;
-        final Comparator<SpellAbility> byHeld = Comparator.comparingInt(ma -> Integer.bitCount(drained.applyAsInt(ma) & held));
+        // a color fixer stays last even when it spares a color
+        final Comparator<SpellAbility> byHeld = Comparator.<SpellAbility, Boolean>comparing(ComputerUtilMana::onlyFixesColor)
+                .thenComparingInt(ma -> Integer.bitCount(drained.applyAsInt(ma) & held));
         final Comparator<SpellAbility> byAny = Comparator.comparingInt(ma -> Integer.bitCount(drained.applyAsInt(ma)));
 
         // stable sorts: ties keep the existing order, including the hand colour tie-break
@@ -2140,7 +2151,7 @@ public class ComputerUtilMana {
             if (a.getApi() != ApiType.Mana && a.getApi() != ApiType.ManaReflected) {
                 continue;
             }
-            // a mana ability that itself costs mana is only usable if it's a simple net-positive
+            // a mana ability that itself costs mana is only usable if it's a filter
             final Cost cost = a.getPayCosts();
             if (cost.hasManaCost() && !isFilterManaAbility(a)) {
                 continue;
@@ -2187,12 +2198,13 @@ public class ComputerUtilMana {
     }
 
     /**
-     * A "filter" mana ability is a plain "{cost}, {T}: Add ..." that produces more mana than it costs,
-     * such as the Signets and the Odyssey and Shadowmoor filter lands. Those are the only mana abilities
-     * with a mana cost that the AI knows how to pay for.
+     * A "filter" mana ability produces at least as much mana as it costs, such as a Signet, a filter land or Chromatic Star.
+     * Its only other costs are a tap or sacrificing a noncreature source.
+     * These are the only mana abilities with a mana cost that the AI can pay for.
      */
     private static boolean isFilterManaAbility(final SpellAbility ma) {
-        if (ma.getApi() != ApiType.Mana || ma.getSubAbility() != null) {
+        // an exhaust ability works only once per game
+        if (ma.getApi() != ApiType.Mana || ma.isExhaust()) {
             return false;
         }
         final Cost cost = ma.getPayCosts();
@@ -2201,17 +2213,25 @@ public class ComputerUtilMana {
             return false;
         }
         for (final CostPart part : cost.getCostParts()) {
-            if (!(part instanceof CostPartMana) && !(part instanceof CostTap)) {
+            // the AI does not weigh what a sacrificed creature is worth
+            final boolean sacrificesSelf = part instanceof CostSacrifice && part.payCostFromSource() && !ma.getHostCard().isCreature();
+            if (!(part instanceof CostPartMana) && !(part instanceof CostTap) && !sacrificesSelf) {
                 return false;
             }
         }
         final AbilityManaPart mp = ma.getManaPart();
-        if (mp == null || mp.isAnyMana() || mp.isSpecialMana() || mp.getOrigProduced().contains("Chosen")) {
+        if (mp == null || mp.isSpecialMana() || mp.getOrigProduced().contains("Chosen")) {
             return false;
         }
         final int amount = AbilityUtils.calculateAmount(ma.getHostCard(), ma.getParamOrDefault("Amount", "1"), ma);
         final int produced = mp.isComboMana() ? amount : mp.getOrigProduced().split(" ").length * amount;
-        return produced > manaCost.getCMC();
+        return produced >= manaCost.getCMC();
+    }
+
+    /** A filter that produces no more mana than it costs, so it only changes the color. */
+    private static boolean onlyFixesColor(final SpellAbility ma) {
+        final int toActivate = getManaToActivate(ma);
+        return toActivate > 0 && ma.amountOfManaGenerated(true) <= toActivate;
     }
 
     /**
