@@ -22,17 +22,18 @@ There will be no releases for now, though everyone is welcome to give feedback i
 <details>
 <summary>Overview of important fork amendments (or future candidates)</summary>
 
-| Slop suspect | Rationale | Priority |
+| Slop suspect | Priority | Rationale |
 | - | - | - |
-| e6f4f67a | one of the first more complex parts was merged completely unreviewed. it had no regard for existing systems or other PR in progress, the first iteration broke netplay support and quickly caused memory problems for mobile users. when pointed out to the author he disappointingly responded rather aggressive and unwilling to reconsider such rush jobs | B |
-| dc72214 | extreme test bloat + hides bugs | A |
-| 9c77436 | adding overhead for artificial problems coming from wrong method usage | A |
-| 1406f4e | incomplete and badly written fix at absolutely the wrong layer | A |
-| 082e9ff | implements an unnecessary cache for tokens. at this point it seems like either the own code just doesn't get checked anymore or the LLM dumping has become too tempting to slow down | A |
-| 5a7f95b | Once again touching way too many files for different reasons, only kept the typo fixes in scripts | B |
-| excessive pattern of obscure named and often single-use static fields | each LLM session invents its own tweak layer, nobody guides it towards a shared architecture | C |
-| anything relying on try-catch usage everywhere | author doesn't understand why his code fails | B |
-| Flat MC | some good ideas but also very unhealthy amounts of vibecode with little manual testing, which then lead to additional bandaids slapped on top - e.g. 8360afa<br>but the nail in the coffin is it not even fully respecting the preference - e.g. `discardTargetAI`<br>-> this leads to a mix that actually worsens AI behaviour while also making it harder to debug user reports<br><br>some "highlights":<br>- fragile tests due to relying on reflection (without a good reason)<br>- rule-breaking script refactors | C |
+| e6f4f67a | B | one of the first more complex parts was merged completely unreviewed. it had no regard for existing systems or other PR in progress, the first iteration broke netplay support and quickly caused memory problems for mobile users. when pointed out to the author he disappointingly responded rather aggressive and unwilling to reconsider such rush jobs |
+| dc72214 | A | extreme test bloat + hides bugs |
+| 9c77436 | A | adding overhead for artificial problems coming from wrong method usage |
+| 1406f4e | A | incomplete and badly written fix at absolutely the wrong layer |
+| 082e9ff | A | implements an unnecessary cache for tokens. at this point it seems like the author just isn't qualified enough or the LLM dumping has simply become too tempting to slow down |
+| 5a7f95b | B | Once again touching way too many files for different reasons; only kept the typo fixes in scripts |
+| excessive pattern of obscure named and often single-use static fields | C | each LLM session invents its own tweak layer, nobody guides it towards a shared architecture |
+| anything relying on try-catch usage everywhere | B | author doesn't care why his code fails |
+| Flat MC | C | some good ideas but also very unhealthy amounts of vibecode with little manual testing, which then lead to additional bandaids slapped on top - e.g. 8360afa<br>but the nail in the coffin is it not even fully respecting the preference - e.g. `discardTargetAI`<br>-> this leads to a mix that actually worsens AI behaviour while also making it harder to debug user reports<br><br>some "highlights":<br>- fragile tests due to relying on reflection (without a good reason)<br>- rule-breaking script refactors | C |
+| 1679040 | C | a good example that the code isn't even read once (at least that's my more flattering interpretation): over 1/3 (50 lines) completely redundant merged within hours |
 
 Due to the many infected files from AI-related changes these will require a more careful "brain surgery" - probably only after that slop train hopefully slows down a bit. The current strategy is to keep a secondary `forge-ai-stable` module structure which can be swapped in-place (only irrelevant test classes with compile errors). This avoids some extra merge conflicts and bonus fixes no longer fitting into its parent have already been built into it.
 
