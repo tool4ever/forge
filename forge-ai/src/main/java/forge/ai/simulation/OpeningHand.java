@@ -126,6 +126,9 @@ public final class OpeningHand {
         if (plan != null && plan.combos.has(ComboPlan.Kind.TUTOR_STORM)) {
             return plan.combos.keepsTutorStormHand(kept, finalSize); // judged as the combo player would, not by the generic score
         }
+        if (TidePlan.isTideDeck(ai)) {
+            return TidePlan.keepsHand(kept, finalSize); // High Tide: lands and the pieces of the loop, not the generic score
+        }
         final double score = score(kept, lib, onPlay, plan);
         return score >= keepBar(finalSize);
     }
@@ -162,7 +165,7 @@ public final class OpeningHand {
         int cheapSources = 0;
         for (final Card c : kept) {
             if (c.isLand() || isMdfcLand(c)) {
-                if (isManaLand(c)) {
+                if (isEarlyManaLand(c)) {
                     lands++;
                 }
             } else if (isCheapManaSource(c)) {
@@ -306,7 +309,7 @@ public final class OpeningHand {
                 quickWiper |= ComboPlan.isCounterWiper(c);
             }
             if (c.isLand() || isMdfcLand(c)) {
-                if (isManaLand(c)) {
+                if (isEarlyManaLand(c)) {
                     lands++;
                     final byte own = producedColors(c);
                     colors |= own != 0 ? own : libraryColors(lib);
@@ -335,7 +338,12 @@ public final class OpeningHand {
 
         double early = 0;
         int keys = landKeys;
+        // an Aura for a creature is no play and no key card in a hand without a creature to put it on (#12929)
+        final boolean hasBody = spells.stream().anyMatch(c -> c.isCreature());
         for (final Card c : spells) {
+            if (!hasBody && isCreatureAura(c)) {
+                continue;
+            }
             if (c.getCMC() <= w.playCmc) {
                 early += colorCredit(c, colors, lib);
             }
@@ -349,6 +357,10 @@ public final class OpeningHand {
         final double quality = 0.6 * playsPart + 0.4 * keysPart;
         double score = 100 * (0.55 * hit + 0.45 * quality) * Math.sqrt(hit);
 
+        if (early == 0 && keys == 0 && size >= 6 && !spells.isEmpty() && forCombo == null && !dredge
+                && arch != DeckPlan.Archetype.LANDS) {
+            score -= 20; // lands and spells that cannot be cast (Auras without a creature): a keep only on the lands' merit
+        }
         if (lands == 0) {
             score -= 60; // bottoming and mulligan rules must never leave a hand without a land
         }
@@ -447,6 +459,27 @@ public final class OpeningHand {
     }
 
     /** A land that makes mana, or one that finds a land (a fetch land is a land drop that gets the colour needed). */
+    /**
+     * A land that makes mana in the first turns: not one that asks for many lands before it works (Temple of the False God
+     * with its five), which is a land drop in the hand and no mana for the plays of turns one to four.
+     */
+    static boolean isEarlyManaLand(final Card c) {
+        return isManaLand(c) && LegalityGuard.landsNeededToWork(c) <= 2;
+    }
+
+    /** An Aura that enchants a creature. */
+    static boolean isCreatureAura(final Card c) {
+        if (!c.isAura()) {
+            return false;
+        }
+        for (final forge.game.keyword.KeywordInterface k : c.getKeywords()) {
+            if (k.getKeyword() == forge.game.keyword.Keyword.ENCHANT && k.getOriginal().toLowerCase().contains("creature")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static boolean isManaLand(final Card c) {
         if (isMdfcLand(c)) {
             return !c.getState(CardStateName.Backside).getManaAbilities().isEmpty();

@@ -21,7 +21,7 @@ import com.google.common.collect.Ordering;
  * @param <T> the type of the elements this collection contains.
  * @see FCollectionView
  */
-public class FCollection<T> implements List<T>, /*Set<T>,*/ FCollectionView<T>, Cloneable, Serializable {
+public class FCollection<T> implements List<T>, RandomAccess, FCollectionView<T>, Cloneable, Serializable {
     private static final long serialVersionUID = -1664555336364294106L;
 
     private static final FCollection<?> EMPTY = new EmptyFCollection<>();
